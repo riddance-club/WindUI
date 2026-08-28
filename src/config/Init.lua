@@ -9,8 +9,23 @@ local function isEqual(a, b)
     if a == b then
         return true
     end
+    if a == nil or b == nil then
+        if (a == nil or a == "" or (type(a) == "table" and next(a) == nil)) and (b == nil or b == "" or (type(b) == "table" and next(b) == nil)) then
+            return true
+        end
+        return false
+    end
     if typeof(a) == "Color3" and typeof(b) == "Color3" then
         return a:ToHex() == b:ToHex()
+    end
+    if typeof(a) == "EnumItem" and typeof(b) == "EnumItem" then
+        return a == b
+    end
+    if typeof(a) == "EnumItem" and type(b) == "string" then
+        return a.Name == b
+    end
+    if type(a) == "string" and typeof(b) == "EnumItem" then
+        return a == b.Name
     end
     if type(a) == "table" and type(b) == "table" then
         for k, v in pairs(a) do
@@ -25,10 +40,10 @@ local function isEqual(a, b)
         end
         return true
     end
-    if a ~= nil and b ~= nil then
-        return tostring(a) == tostring(b)
+    if tonumber(a) and tonumber(b) then
+        return tonumber(a) == tonumber(b)
     end
-    return false
+    return tostring(a) == tostring(b)
 end
 
 local ConfigManager
@@ -44,11 +59,11 @@ ConfigManager = {
                     return nil 
                 end
 
-                local defVal = (typeof(obj.Default) == "Color3" and obj.Default) or (typeof(obj.DefaultValue) == "Color3" and obj.DefaultValue)
                 local curTrans = obj.Transparency
-                local defTrans = obj.DefaultTransparency or (type(obj.Default) == "table" and obj.Default.Transparency)
+                local defCol = (obj.__defaultValue and obj.__defaultValue.color) or (typeof(obj.Default) == "Color3" and obj.Default) or (typeof(obj.DefaultValue) == "Color3" and obj.DefaultValue) or (typeof(obj.Color) == "Color3" and obj.Color)
+                local defTrans = (obj.__defaultValue and obj.__defaultValue.transparency) or obj.DefaultTransparency or (type(obj.Default) == "table" and obj.Default.Transparency)
 
-                if defVal and curVal:ToHex() == defVal:ToHex() and curTrans == defTrans then
+                if defCol and curVal:ToHex() == defCol:ToHex() and curTrans == defTrans then
                     return nil
                 end
 
@@ -67,10 +82,23 @@ ConfigManager = {
         Dropdown = {
             Save = function(obj)
                 local curVal = obj.Value
-                local defVal = obj.Default ~= nil and obj.Default or obj.DefaultValue
-                if defVal ~= nil and isEqual(curVal, defVal) then
+                if curVal == nil then
                     return nil
                 end
+
+                local defVal = obj.__defaultValue
+                if defVal == nil then
+                    defVal = obj.Default ~= nil and obj.Default or obj.DefaultValue
+                end
+
+                if isEqual(curVal, defVal) then
+                    return nil
+                end
+
+                if type(curVal) == "table" and next(curVal) == nil and (defVal == nil or (type(defVal) == "table" and next(defVal) == nil)) then
+                    return nil
+                end
+
                 return {
                     __type = obj.__type,
                     value = curVal,
@@ -85,10 +113,19 @@ ConfigManager = {
         Input = {
             Save = function(obj)
                 local curVal = obj.Value
-                local defVal = obj.Default ~= nil and obj.Default or (obj.DefaultValue ~= nil and obj.DefaultValue or "")
+                if curVal == nil then
+                    return nil
+                end
+
+                local defVal = obj.__defaultValue
+                if defVal == nil then
+                    defVal = obj.Default ~= nil and obj.Default or (obj.DefaultValue ~= nil and obj.DefaultValue or "")
+                end
+
                 if isEqual(curVal, defVal) then
                     return nil
                 end
+
                 return {
                     __type = obj.__type,
                     value = curVal,
@@ -103,10 +140,32 @@ ConfigManager = {
         Keybind = {
             Save = function(obj)
                 local curVal = obj.Value
-                local defVal = obj.Default ~= nil and obj.Default or (obj.DefaultValue ~= nil and obj.DefaultValue or "None")
-                if isEqual(curVal, defVal) then
+                if typeof(curVal) == "EnumItem" then
+                    curVal = curVal.Name
+                end
+                if curVal == nil or curVal == "None" or curVal == "Unknown" then
+                    curVal = ""
+                end
+
+                local defVal = obj.__defaultValue
+                if defVal == nil then
+                    defVal = obj.Default or obj.DefaultValue or ""
+                end
+                if typeof(defVal) == "EnumItem" then
+                    defVal = defVal.Name
+                end
+                if defVal == nil or defVal == "None" or defVal == "Unknown" then
+                    defVal = ""
+                end
+
+                if curVal == defVal then
                     return nil
                 end
+
+                if curVal == "" and (defVal == "" or defVal == nil) then
+                    return nil
+                end
+
                 return {
                     __type = obj.__type,
                     value = curVal,
@@ -121,13 +180,26 @@ ConfigManager = {
         Slider = {
             Save = function(obj)
                 local curVal = (type(obj.Value) == "table" and (obj.Value.Default or obj.Value.Value)) or obj.Value
-                local defVal = (type(obj.Default) == "table" and (obj.Default.Default or obj.Default.Value)) or obj.Default or (type(obj.Value) == "table" and obj.Value.Default)
-                if curVal ~= nil and defVal ~= nil and tonumber(curVal) == tonumber(defVal) then
+                if curVal == nil then
                     return nil
                 end
+
+                local defVal = obj.__defaultValue
+                if defVal == nil then
+                    defVal = (type(obj.Default) == "table" and (obj.Default.Default or obj.Default.Value)) or obj.Default or (type(obj.Value) == "table" and obj.Value.Default)
+                end
+
+                if defVal ~= nil and tonumber(curVal) and tonumber(defVal) and tonumber(curVal) == tonumber(defVal) then
+                    return nil
+                end
+
+                if isEqual(curVal, defVal) then
+                    return nil
+                end
+
                 return {
                     __type = obj.__type,
-                    value = curVal,
+                    value = tonumber(curVal) or curVal,
                 }
             end,
             Load = function(element, data)
@@ -139,10 +211,19 @@ ConfigManager = {
         Toggle = {
             Save = function(obj)
                 local curVal = obj.Value
-                local defVal = obj.Default ~= nil and obj.Default or (obj.DefaultValue ~= nil and obj.DefaultValue or false)
+                if curVal == nil then
+                    return nil
+                end
+
+                local defVal = obj.__defaultValue
+                if defVal == nil then
+                    defVal = obj.Default ~= nil and obj.Default or (obj.DefaultValue ~= nil and obj.DefaultValue or false)
+                end
+
                 if curVal == defVal then
                     return nil
                 end
+
                 return {
                     __type = obj.__type,
                     value = curVal,
@@ -223,6 +304,56 @@ function ConfigManager:CreateConfig(configFilename, autoload)
     end
     
     function ConfigModule:Register(Name, Element)
+        if Element and type(Element) == "table" then
+            if Element.__defaultValue == nil then
+                if Element.__type == "Slider" then
+                    if type(Element.Value) == "table" then
+                        Element.__defaultValue = Element.Value.Default or Element.Value.Value
+                    else
+                        Element.__defaultValue = Element.Value ~= nil and Element.Value or Element.Default
+                    end
+                elseif Element.__type == "Colorpicker" then
+                    local col = (typeof(Element.Value) == "Color3" and Element.Value) or (typeof(Element.Default) == "Color3" and Element.Default) or (typeof(Element.Color) == "Color3" and Element.Color)
+                    local trans = Element.Transparency or Element.DefaultTransparency or (type(Element.Default) == "table" and Element.Default.Transparency)
+                    Element.__defaultValue = {
+                        color = col,
+                        transparency = trans
+                    }
+                elseif Element.__type == "Toggle" then
+                    if Element.Default ~= nil then
+                        Element.__defaultValue = Element.Default
+                    elseif Element.Value ~= nil then
+                        Element.__defaultValue = Element.Value
+                    else
+                        Element.__defaultValue = false
+                    end
+                elseif Element.__type == "Dropdown" then
+                    local val = Element.Default ~= nil and Element.Default or (Element.DefaultValue ~= nil and Element.DefaultValue or Element.Value)
+                    if type(val) == "table" then
+                        local clone = {}
+                        for k, v in pairs(val) do
+                            clone[k] = v
+                        end
+                        Element.__defaultValue = clone
+                    else
+                        Element.__defaultValue = val
+                    end
+                elseif Element.__type == "Keybind" then
+                    local k = Element.Default or Element.DefaultValue or Element.Value or ""
+                    if typeof(k) == "EnumItem" then
+                        k = k.Name
+                    end
+                    if k == "None" or k == "Unknown" then
+                        k = ""
+                    end
+                    Element.__defaultValue = k
+                elseif Element.__type == "Input" then
+                    Element.__defaultValue = Element.Default ~= nil and Element.Default or (Element.DefaultValue ~= nil and Element.DefaultValue or (Element.Value ~= nil and Element.Value or ""))
+                else
+                    Element.__defaultValue = Element.Default ~= nil and Element.Default or Element.Value
+                end
+            end
+        end
         ConfigModule.Elements[Name] = Element
     end
     
@@ -239,7 +370,7 @@ function ConfigManager:CreateConfig(configFilename, autoload)
     end
     
     function ConfigModule:Save()
-        if Window.PendingFlags then
+        if Window and Window.PendingFlags then
             for flag, element in next, Window.PendingFlags do
                 ConfigModule:Register(flag, element)
             end
@@ -295,7 +426,7 @@ function ConfigManager:CreateConfig(configFilename, autoload)
             loadData = migratedData
         end
         
-        if Window.PendingFlags then
+        if Window and Window.PendingFlags then
             for flag, element in next, Window.PendingFlags do
                 ConfigModule:Register(flag, element)
             end
@@ -351,6 +482,12 @@ function ConfigManager:CreateConfig(configFilename, autoload)
             custom = ConfigModule.CustomData,
             autoload = ConfigModule.AutoLoad
         }
+    end
+    
+    if Window and Window.PendingFlags then
+        for flag, element in next, Window.PendingFlags do
+            ConfigModule:Register(flag, element)
+        end
     end
     
     if isfile(ConfigModule.Path) then
