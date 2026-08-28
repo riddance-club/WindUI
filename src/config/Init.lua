@@ -1,10 +1,35 @@
 local cloneref = (cloneref or clonereference or function(instance) return instance end)
 
-
 local RunService = cloneref(game:GetService("RunService"))
 local HttpService = cloneref(game:GetService("HttpService"))
 
 local Window 
+
+local function isEqual(a, b)
+    if a == b then
+        return true
+    end
+    if typeof(a) == "Color3" and typeof(b) == "Color3" then
+        return a:ToHex() == b:ToHex()
+    end
+    if type(a) == "table" and type(b) == "table" then
+        for k, v in pairs(a) do
+            if not isEqual(v, b[k]) then
+                return false
+            end
+        end
+        for k, v in pairs(b) do
+            if a[k] == nil then
+                return false
+            end
+        end
+        return true
+    end
+    if a ~= nil and b ~= nil then
+        return tostring(a) == tostring(b)
+    end
+    return false
+end
 
 local ConfigManager
 ConfigManager = {
@@ -14,10 +39,23 @@ ConfigManager = {
     Parser = {
         Colorpicker = {
             Save = function(obj)
+                local curVal = (typeof(obj.Value) == "Color3" and obj.Value) or (typeof(obj.Default) == "Color3" and obj.Default) or (typeof(obj.Color) == "Color3" and obj.Color)
+                if not curVal then 
+                    return nil 
+                end
+
+                local defVal = (typeof(obj.Default) == "Color3" and obj.Default) or (typeof(obj.DefaultValue) == "Color3" and obj.DefaultValue)
+                local curTrans = obj.Transparency
+                local defTrans = obj.DefaultTransparency or (type(obj.Default) == "table" and obj.Default.Transparency)
+
+                if defVal and curVal:ToHex() == defVal:ToHex() and curTrans == defTrans then
+                    return nil
+                end
+
                 return {
                     __type = obj.__type,
-                    value = obj.Default:ToHex(),
-                    transparency = obj.Transparency or nil,
+                    value = curVal:ToHex(),
+                    transparency = curTrans or nil,
                 }
             end,
             Load = function(element, data)
@@ -28,9 +66,14 @@ ConfigManager = {
         },
         Dropdown = {
             Save = function(obj)
+                local curVal = obj.Value
+                local defVal = obj.Default ~= nil and obj.Default or obj.DefaultValue
+                if defVal ~= nil and isEqual(curVal, defVal) then
+                    return nil
+                end
                 return {
                     __type = obj.__type,
-                    value = obj.Value,
+                    value = curVal,
                 }
             end,
             Load = function(element, data)
@@ -41,9 +84,14 @@ ConfigManager = {
         },
         Input = {
             Save = function(obj)
+                local curVal = obj.Value
+                local defVal = obj.Default ~= nil and obj.Default or (obj.DefaultValue ~= nil and obj.DefaultValue or "")
+                if isEqual(curVal, defVal) then
+                    return nil
+                end
                 return {
                     __type = obj.__type,
-                    value = obj.Value,
+                    value = curVal,
                 }
             end,
             Load = function(element, data)
@@ -54,9 +102,14 @@ ConfigManager = {
         },
         Keybind = {
             Save = function(obj)
+                local curVal = obj.Value
+                local defVal = obj.Default ~= nil and obj.Default or (obj.DefaultValue ~= nil and obj.DefaultValue or "None")
+                if isEqual(curVal, defVal) then
+                    return nil
+                end
                 return {
                     __type = obj.__type,
-                    value = obj.Value,
+                    value = curVal,
                 }
             end,
             Load = function(element, data)
@@ -67,9 +120,14 @@ ConfigManager = {
         },
         Slider = {
             Save = function(obj)
+                local curVal = (type(obj.Value) == "table" and (obj.Value.Default or obj.Value.Value)) or obj.Value
+                local defVal = (type(obj.Default) == "table" and (obj.Default.Default or obj.Default.Value)) or obj.Default or (type(obj.Value) == "table" and obj.Value.Default)
+                if curVal ~= nil and defVal ~= nil and tonumber(curVal) == tonumber(defVal) then
+                    return nil
+                end
                 return {
                     __type = obj.__type,
-                    value = obj.Value.Default,
+                    value = curVal,
                 }
             end,
             Load = function(element, data)
@@ -80,9 +138,14 @@ ConfigManager = {
         },
         Toggle = {
             Save = function(obj)
+                local curVal = obj.Value
+                local defVal = obj.Default ~= nil and obj.Default or (obj.DefaultValue ~= nil and obj.DefaultValue or false)
+                if curVal == defVal then
+                    return nil
+                end
                 return {
                     __type = obj.__type,
-                    value = obj.Value,
+                    value = curVal,
                 }
             end,
             Load = function(element, data)
@@ -115,8 +178,9 @@ function ConfigManager:Init(WindowTable)
     local files = ConfigManager:AllConfigs()
     
     for _, f in next, files do
-        if isfile and readfile and isfile(f .. ".json") then
-            ConfigManager.Configs[f] = readfile(f .. ".json")
+        local fullPath = ConfigManager.Path .. f .. ".json"
+        if isfile and readfile and isfile(fullPath) then
+            ConfigManager.Configs[f] = readfile(fullPath)
         end
     end
     
@@ -190,7 +254,10 @@ function ConfigManager:CreateConfig(configFilename, autoload)
         
         for name, element in next, ConfigModule.Elements do
             if ConfigManager.Parser[element.__type] then
-                saveData.__elements[tostring(name)] = ConfigManager.Parser[element.__type].Save(element)
+                local parsed = ConfigManager.Parser[element.__type].Save(element)
+                if parsed ~= nil then
+                    saveData.__elements[tostring(name)] = parsed
+                end
             end
         end
         
@@ -234,11 +301,16 @@ function ConfigManager:CreateConfig(configFilename, autoload)
             end
         end
         
+        local count = 0
         for name, data in next, (loadData.__elements or {}) do
             if ConfigModule.Elements[name] and ConfigManager.Parser[data.__type] then
                 task.spawn(function()
                     ConfigManager.Parser[data.__type].Load(ConfigModule.Elements[name], data)
                 end)
+                count = count + 1
+                if count % 15 == 0 then
+                    task.wait()
+                end
             end
         end
         
@@ -281,7 +353,6 @@ function ConfigManager:CreateConfig(configFilename, autoload)
         }
     end
     
-    
     if isfile(ConfigModule.Path) then
         local success, configData = pcall(function()
             return HttpService:JSONDecode(readfile(ConfigModule.Path))
@@ -303,7 +374,6 @@ function ConfigManager:CreateConfig(configFilename, autoload)
             end)
         end
     end
-    
     
     ConfigModule:SetAsCurrent()
     ConfigManager.Configs[configFilename] = ConfigModule
