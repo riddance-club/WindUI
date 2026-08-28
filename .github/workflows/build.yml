@@ -43,6 +43,6 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: latest
-          name: main.lua
+          name: latest
           files: dist/main.lua
           make_latest: true
