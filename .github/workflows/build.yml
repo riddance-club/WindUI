@@ -1,4 +1,4 @@
-name: Build WindUI (main)
+name: Build WindUI
 
 on:
   push:
@@ -7,13 +7,15 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
       - name: Setup Node.js
-        uses: actions/setup-node@v5
+        uses: actions/setup-node@v4
         with:
           node-version: 18
 
@@ -34,10 +36,10 @@ jobs:
       - name: Run build
         run: npm run build
 
-      - name: Commit dist/main.lua back to repo
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add dist/main.lua
-          git commit -m "[AUTO] Upload built main.lua" || exit 0
-          git push
+      - name: Create/Update Latest Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: latest
+          name: main.lua
+          files: dist/main.lua
+          make_latest: true
