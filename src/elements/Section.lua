@@ -101,8 +101,6 @@ function Element:New(Config)
 				TextColor3 = "Text",
 			},
 			FontFace = Font.new(Creator.Font, Type == "Title" and Section.FontWeight or Section.DescFontWeight),
-			--Parent = Config.Parent,
-			--Size = UDim2.new(1,0,0,0),
 			Text = Text,
 			Size = UDim2.new(1, 0, 0, 0),
 			TextWrapped = true,
@@ -130,7 +128,6 @@ function Element:New(Config)
 		Size = UDim2.new(1, 0, 0, 0),
 		BackgroundTransparency = 1,
 		Parent = Config.Parent,
-		--ClipsDescendants = true,
 		AutomaticSize = "Y",
 		ThemeTag = {
 			ImageTransparency = Section.Box and "SectionBoxBackgroundTransparency" or nil,
@@ -140,11 +137,7 @@ function Element:New(Config)
 	}, {
 		Creator.NewRoundFrame(Config.Window.ElementConfig.UICorner - 1, "SquircleOutline", {
 			Size = UDim2.new(1, 0, 1, 0),
-			--AnchorPoint = Vector2.new(0.5, 0.5),
-			--Position = UDim2.new(0.5, 0, 0.5, 0),
-			--ImageTransparency = .75,
 			ThemeTag = {
-				--ImageTransparency = "SectionBoxBorderTransparency",
 				ImageColor3 = "SectionBoxBorder",
 			},
 			ImageTransparency = Section.Box and Section.BoxBorder and 0.92 or 1,
@@ -208,10 +201,6 @@ function Element:New(Config)
 		}),
 	})
 
-	-- Section.UIElements.Main:GetPropertyChangedSignal("TextBounds"):Connect(function()
-	--     Section.UIElements.Main.Size = UDim2.new(1,0,0,Section.UIElements.Main.TextBounds.Y)
-	-- end)
-
 	Section.ElementFrame = Main
 
 	Main.Outline.Top:GetPropertyChangedSignal("AbsoluteSize"):Connect(function()
@@ -220,7 +209,7 @@ function Element:New(Config)
 		if Section.Opened then
 			Section:Open(true)
 		else
-			Section.Close(true)
+			Section:Close(true)
 		end
 	end)
 
@@ -230,7 +219,17 @@ function Element:New(Config)
 		if not Section.Expandable then
 			Section.Expandable = true
 			ChevronIconFrame.Visible = true
+			Main.Outline.Content.Visible = true
+			Main.AutomaticSize = "None"
+			Main.Outline.Top.Size = UDim2.new(1, 0, 0, (not DescFrame and Section.HeaderSize or 0))
+			Main.Outline.Top.AutomaticSize = (not Section.Expandable or DescFrame) and "Y" or "None"
 			UpdateTitleSize()
+
+			if Section.Opened then
+				Section:Open(true)
+			else
+				Section:Close(true)
+			end
 		end
 	end, ElementsModule, Config.UIScale, Config.Tab)
 
@@ -253,20 +252,13 @@ function Element:New(Config)
 		for _, element in next, Section.Elements do
 			element:Destroy()
 		end
-
-		-- Section.UIElements.Main.AutomaticSize = "None"
-		-- Section.UIElements.Main.Size = UDim2.new(1,0,0,Section.UIElements.Main.TextBounds.Y)
-
-		-- Tween(Section.UIElements.Main, .1, {TextTransparency = 1}):Play()
-		-- task.wait(.1)
-		-- Tween(Section.UIElements.Main, .15, {Size = UDim2.new(1,0,0,0)}, Enum.EasingStyle.Quint, Enum.EasingDirection.InOut):Play()
-
 		Main:Destroy()
 	end
 
 	function Section:Open(IsNotAnim)
 		if Section.Expandable then
 			Section.Opened = true
+			Main.Outline.Content.Visible = true
 			if IsNotAnim then
 				Main.Size = UDim2.new(
 					Main.Size.X.Scale,
@@ -299,6 +291,7 @@ function Element:New(Config)
 			end
 		end
 	end
+
 	function Section:Close(IsNotAnim)
 		if Section.Expandable then
 			Section.Opened = false
@@ -350,14 +343,6 @@ function Element:New(Config)
 
 	task.defer(function()
 		if Section.Expandable then
-			-- New("UIPadding", {
-			--     PaddingTop = UDim.new(0,4),
-			--     PaddingLeft = UDim.new(0,Section.Padding),
-			--     PaddingRight = UDim.new(0,Section.Padding),
-			--     PaddingBottom = UDim.new(0,2),
-
-			--     Parent = Main.Top,
-			-- })
 			Main.Size =
 				UDim2.new(Main.Size.X.Scale, Main.Size.X.Offset, 0, Main.Outline.Top.AbsoluteSize.Y / Config.UIScale)
 			Main.AutomaticSize = "None"
@@ -366,7 +351,7 @@ function Element:New(Config)
 			Main.Outline.Content.Visible = true
 		end
 		if Section.Opened then
-			Section:Open()
+			Section:Open(true)
 		else
 			Section:Close(true)
 		end
