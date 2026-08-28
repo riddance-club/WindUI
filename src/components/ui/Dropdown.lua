@@ -571,8 +571,6 @@ function DropdownMenu.New(Config, Dropdown, Element, Type)
 		Dropdown.Values = Values
 	end
 
-	DropdownModule:Refresh(Dropdown.Values)
-
 	function DropdownModule:Select(Items)
 		if Items then
 			Dropdown.Value = Items
@@ -583,13 +581,26 @@ function DropdownMenu.New(Config, Dropdown, Element, Type)
 				Dropdown.Value = nil
 			end
 		end
-		DropdownModule:Refresh(Dropdown.Values)
+		
+		--if Dropdown.Opened then
+		--DropdownModule:Refresh(Dropdown.Values)
+		--end;
 	end
-
+	
+	DropdownModule:Display()
+	local made_values = false;
 	RecalculateListSize()
 	RecalculateCanvasSize()
 
 	function DropdownModule:Open()
+		if not made_values then
+			made_values = true;
+			DropdownModule:Refresh(Dropdown.Values)
+
+			RecalculateListSize()
+			RecalculateCanvasSize()
+		end;
+
 		if not Dropdown.Locked then
 			Dropdown.UIElements.Menu.Visible = true
 			Dropdown.UIElements.MenuCanvas.Visible = true
