@@ -74,8 +74,14 @@ ConfigManager = {
                 }
             end,
             Load = function(element, data)
-                if element and element.Update then
-                    element:Update(Color3.fromHex(data.value), data.transparency or nil)
+                if element and element.Update and data and data.value then
+                    local curHex = (typeof(element.Value) == "Color3" and element.Value:ToHex()) or (typeof(element.Color) == "Color3" and element.Color:ToHex())
+                    if curHex == data.value and element.Transparency == data.transparency then
+                        return
+                    end
+                    pcall(function()
+                        element:Update(Color3.fromHex(data.value), data.transparency or nil)
+                    end)
                 end
             end
         },
@@ -105,8 +111,13 @@ ConfigManager = {
                 }
             end,
             Load = function(element, data)
-                if element and element.Select then
-                    element:Select(data.value)
+                if element and element.Select and data and data.value ~= nil then
+                    if isEqual(element.Value, data.value) then
+                        return
+                    end
+                    pcall(function()
+                        element:Select(data.value)
+                    end)
                 end
             end
         },
@@ -132,8 +143,13 @@ ConfigManager = {
                 }
             end,
             Load = function(element, data)
-                if element and element.Set then
-                    element:Set(data.value)
+                if element and element.Set and data and data.value ~= nil then
+                    if tostring(element.Value) == tostring(data.value) then
+                        return
+                    end
+                    pcall(function()
+                        element:Set(data.value)
+                    end)
                 end
             end
         },
@@ -172,8 +188,20 @@ ConfigManager = {
                 }
             end,
             Load = function(element, data)
-                if element and element.Set then
-                    element:Set(data.value)
+                if element and element.Set and data and data.value ~= nil then
+                    local cur = element.Value
+                    if typeof(cur) == "EnumItem" then
+                        cur = cur.Name
+                    end
+                    if (cur == nil or cur == "None" or cur == "Unknown") and data.value == "" then
+                        return
+                    end
+                    if cur == data.value then
+                        return
+                    end
+                    pcall(function()
+                        element:Set(data.value)
+                    end)
                 end
             end
         },
@@ -203,8 +231,15 @@ ConfigManager = {
                 }
             end,
             Load = function(element, data)
-                if element and element.Set then
-                    element:Set(tonumber(data.value))
+                if element and element.Set and data and data.value ~= nil then
+                    local cur = (type(element.Value) == "table" and (element.Value.Default or element.Value.Value)) or element.Value
+                    local target = tonumber(data.value)
+                    if target and cur and tonumber(cur) == target then
+                        return
+                    end
+                    pcall(function()
+                        element:Set(target or data.value)
+                    end)
                 end
             end
         },
@@ -230,8 +265,13 @@ ConfigManager = {
                 }
             end,
             Load = function(element, data)
-                if element and element.Set then
-                    element:Set(data.value)
+                if element and element.Set and data and data.value ~= nil then
+                    if element.Value == data.value then
+                        return
+                    end
+                    pcall(function()
+                        element:Set(data.value)
+                    end)
                 end
             end
         },
@@ -432,15 +472,16 @@ function ConfigManager:CreateConfig(configFilename, autoload)
             end
         end
         
-        local count = 0
+        local frameBudget = 0.006
+        local startClock = os.clock()
+        
         for name, data in next, (loadData.__elements or {}) do
-            if ConfigModule.Elements[name] and ConfigManager.Parser[data.__type] then
-                task.spawn(function()
-                    ConfigManager.Parser[data.__type].Load(ConfigModule.Elements[name], data)
-                end)
-                count = count + 1
-                if count % 15 == 0 then
+            local element = ConfigModule.Elements[name]
+            if element and data and data.__type and ConfigManager.Parser[data.__type] then
+                ConfigManager.Parser[data.__type].Load(element, data)
+                if os.clock() - startClock > frameBudget then
                     task.wait()
+                    startClock = os.clock()
                 end
             end
         end
