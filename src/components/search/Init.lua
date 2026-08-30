@@ -24,6 +24,8 @@ function SearchBar.new(TabModule, Parent, OnClose)
 		Icons = require("./Icons"),
 	}
 
+	local currentSearchId = 0
+
 	local TextBox = New("TextBox", {
 		Text = "",
 		PlaceholderText = "Search...",
@@ -95,7 +97,6 @@ function SearchBar.new(TabModule, Parent, OnClose)
 		Creator.NewRoundFrame(SearchBarModule.Radius, "Squircle", {
 			Size = UDim2.new(1, 0, 1, 0),
 			BackgroundTransparency = 1,
-			--AutomaticSize = "Y",
 			Visible = false,
 			ThemeTag = {
 				ImageColor3 = "White",
@@ -107,14 +108,6 @@ function SearchBar.new(TabModule, Parent, OnClose)
 				Size = UDim2.new(1, 0, 0, 46),
 				BackgroundTransparency = 1,
 			}, {
-				-- Creator.NewRoundFrame(SearchBarModule.Radius, "Squircle-TL-TR", {
-				--     Size = UDim2.new(1,0,1,0),
-				--     BackgroundTransparency = 1,
-				--     ThemeTag = {
-				--         ImageColor3 = "Text",
-				--     },
-				--     ImageTransparency = .95
-				-- }),
 				New("Frame", {
 					Size = UDim2.new(1, 0, 1, 0),
 					BackgroundTransparency = 1,
@@ -176,47 +169,29 @@ function SearchBar.new(TabModule, Parent, OnClose)
 		BackgroundTransparency = 1,
 		Position = UDim2.new(0.5, 0, 0.5, 0),
 		AnchorPoint = Vector2.new(0.5, 0.5),
-		Visible = false, -- true
-		--GroupTransparency = 1, -- 0
+		Visible = false,
 		ZIndex = 99999999,
 	}, {
 		New("UIScale", {
-			Scale = 0.9, -- 1
+			Scale = 0.9,
 		}),
 		SearchFrame,
-		--[[Creator.NewRoundFrame(SearchBarModule.Radius, "SquircleGlass", {
-			Size = UDim2.new(1, 4, 1, 4),
-			AnchorPoint = Vector2.new(0.5, 0.5),
-			Position = UDim2.new(0.5, 0, 0.5, 0),
-			BackgroundTransparency = 1,
-			ImageTransparency = 1,
-			--AutomaticSize = "Y",
-			--Visible = false,
-			--[ThemeTag = {
-				ImageColor3 = "SearchBarBorder",
-				ImageTransparency = "SearchBarBorderTransparency",
-			},]
-			Name = "Outline",
-		}),
-		]]
 	})
 
-	local function CreateSearchTab(Title, Desc, Icon, Parent, IsParent, Callback)
+	local function CreateSearchTab(Title, Desc, Icon, TargetParent, IsParent, Callback)
 		local Tab = New("TextButton", {
 			Size = UDim2.new(1, 0, 0, 0),
 			AutomaticSize = "Y",
 			BackgroundTransparency = 1,
-			Parent = Parent or nil,
 		}, {
 			Creator.NewRoundFrame(SearchBarModule.Radius - 11, "Squircle", {
 				Size = UDim2.new(1, 0, 0, 0),
 				Position = UDim2.new(0.5, 0, 0.5, 0),
 				AnchorPoint = Vector2.new(0.5, 0.5),
-				-- AutomaticSize = "Y",
 				ThemeTag = {
 					ImageColor3 = "Text",
 				},
-				ImageTransparency = 1, -- .95
+				ImageTransparency = 1,
 				Name = "Main",
 			}, {
 				Creator.NewRoundFrame(SearchBarModule.Radius - 11, "Glass-1", {
@@ -226,17 +201,9 @@ function SearchBar.new(TabModule, Parent, OnClose)
 					ThemeTag = {
 						ImageColor3 = "White",
 					},
-					ImageTransparency = 1, -- .75
+					ImageTransparency = 1,
 					Name = "Outline",
 				}, {
-					-- New("UIGradient", {
-					--     Rotation = 65,
-					--     Transparency = NumberSequence.new({
-					--         NumberSequenceKeypoint.new(0, 0.55),
-					--         NumberSequenceKeypoint.new(0.5, 0.8),
-					--         NumberSequenceKeypoint.new(1, 0.6)
-					--     })
-					-- }),
 					New("UIPadding", {
 						PaddingTop = UDim.new(0, SearchBarModule.Padding - 2),
 						PaddingLeft = UDim.new(0, SearchBarModule.Padding),
@@ -305,9 +272,8 @@ function SearchBar.new(TabModule, Parent, OnClose)
 				AutomaticSize = "Y",
 				BackgroundTransparency = 1,
 				Visible = IsParent,
-				--Position = UDim2.new(0,SearchBarModule.Padding*2,1,0),
 			}, {
-				Creator.NewRoundFrame(99, "Squircle", { -- line
+				Creator.NewRoundFrame(99, "Squircle", {
 					Size = UDim2.new(0, 2, 1, 0),
 					BackgroundTransparency = 1,
 					ThemeTag = {
@@ -333,8 +299,6 @@ function SearchBar.new(TabModule, Parent, OnClose)
 			}),
 		})
 
-		--
-
 		Tab.Main.Size = UDim2.new(
 			1,
 			0,
@@ -346,17 +310,19 @@ function SearchBar.new(TabModule, Parent, OnClose)
 
 		Creator.AddSignal(Tab.Main.MouseEnter, function()
 			Tween(Tab.Main, 0.04, { ImageTransparency = 0.95 }):Play()
-			--Tween(Tab.Main.Outline, 0.04, { ImageTransparency = 0.75 }):Play()
 		end)
 		Creator.AddSignal(Tab.Main.InputEnded, function()
 			Tween(Tab.Main, 0.08, { ImageTransparency = 1 }):Play()
-			--Tween(Tab.Main.Outline, 0.08, { ImageTransparency = 1 }):Play()
 		end)
 		Creator.AddSignal(Tab.Main.MouseButton1Click, function()
 			if Callback then
 				Callback()
 			end
 		end)
+
+		if TargetParent then
+			Tab.Parent = TargetParent
+		end
 
 		return Tab
 	end
@@ -365,15 +331,10 @@ function SearchBar.new(TabModule, Parent, OnClose)
 		if not query or query == "" then
 			return false
 		end
-
 		if not str or str == "" then
 			return false
 		end
-
-		local lowerStr = string.lower(str)
-		local lowerQuery = string.lower(query)
-
-		return string.find(lowerStr, lowerQuery, 1, true) ~= nil
+		return string.find(string.lower(str), string.lower(query), 1, true) ~= nil
 	end
 
 	local function Search(query)
@@ -415,26 +376,21 @@ function SearchBar.new(TabModule, Parent, OnClose)
 		return results
 	end
 
+	local resizeDebounce = false
 	Creator.AddSignal(ScrollingFrame.UIListLayout:GetPropertyChangedSignal("AbsoluteContentSize"), function()
-		--task.wait()
-		Tween(ScrollingFrame, 0.06, {
-			Size = UDim2.new(
-				1,
+		if resizeDebounce then return end
+		resizeDebounce = true
+		task.defer(function()
+			resizeDebounce = false
+			local targetHeight = math.clamp(
+				ScrollingFrame.UIListLayout.AbsoluteContentSize.Y + (SearchBarModule.Padding * 2),
 				0,
-				0,
-				math.clamp(
-					ScrollingFrame.UIListLayout.AbsoluteContentSize.Y + (SearchBarModule.Padding * 2),
-					0,
-					SearchBarModule.MaxHeight
-				)
-			),
-		}, Enum.EasingStyle.Quint, Enum.EasingDirection.InOut):Play()
-		-- ScrollingFrame.Size = UDim2.new(
-		--     1,
-		--     0,
-		--     0,
-		--     math.clamp(ScrollingFrame.UIListLayout.AbsoluteContentSize.Y+(SearchBarModule.Padding*2), 0, SearchBarModule.MaxHeight)
-		-- )
+				SearchBarModule.MaxHeight
+			)
+			Tween(ScrollingFrame, 0.06, {
+				Size = UDim2.new(1, 0, 0, targetHeight),
+			}, Enum.EasingStyle.Quint, Enum.EasingDirection.InOut):Play()
+		end)
 	end)
 
 	function SearchBarModule:Open()
@@ -468,65 +424,80 @@ function SearchBar.new(TabModule, Parent, OnClose)
 	function SearchBarModule:Search(query)
 		query = query or ""
 
-		local result = Search(query)
+		currentSearchId += 1
+		local thisSearchId = currentSearchId
 
-		ScrollingFrame.Visible = true
-		SearchFrame.Frame.Results.Frame.Visible = true
-		for _, item in next, ScrollingFrame:GetChildren() do
-			if item.ClassName ~= "UIListLayout" and item.ClassName ~= "UIPadding" then
-				item:Destroy()
-			end
-		end
+		task.spawn(function()
+			local result = Search(query)
+			if thisSearchId ~= currentSearchId then return end
 
-		if result and next(result) ~= nil then
-			for tabindex, i in next, result do
-				local TabIcon = SearchBarModule.Icons["Tab"]
-				local TabMainElement = CreateSearchTab(i.Title, nil, TabIcon, ScrollingFrame, true, function()
-					SearchBarModule:Close()
-					TabModule:SelectTab(tabindex)
-				end)
-				if i.Elements and next(i.Elements) ~= nil then
-					for elemindex, e in next, i.Elements do
-						local ElementIcon = SearchBarModule.Icons[e.__type]
-						CreateSearchTab(
-							e.Title,
-							e.Desc,
-							ElementIcon,
-							TabMainElement:FindFirstChild("ParentContainer") and TabMainElement.ParentContainer.Frame
-								or nil,
-							false,
-							function()
-								SearchBarModule:Close()
-								TabModule:SelectTab(tabindex)
-								if i.Tab.ScrollToTheElement then
-									--print("uooo")
-									i.Tab:ScrollToTheElement(e.Index)
-								end
-								--
-							end
-						)
-						--task.wait(0)
-					end
+			ScrollingFrame.Visible = true
+			SearchFrame.Frame.Results.Frame.Visible = true
+
+			for _, item in next, ScrollingFrame:GetChildren() do
+				if item.ClassName ~= "UIListLayout" and item.ClassName ~= "UIPadding" then
+					item:Destroy()
 				end
 			end
-		elseif query ~= "" then
-			New("TextLabel", {
-				Size = UDim2.new(1, 0, 0, 70),
-				Text = "No results found",
-				TextSize = 16,
-				ThemeTag = {
-					TextColor3 = "Text",
-				},
-				TextTransparency = 0.2,
-				BackgroundTransparency = 1,
-				FontFace = Font.new(Creator.Font, Enum.FontWeight.Medium),
-				Parent = ScrollingFrame,
-				Name = "NotFound",
-			})
-		else
-			ScrollingFrame.Visible = false
-			SearchFrame.Frame.Results.Frame.Visible = false
-		end
+
+			if result and next(result) ~= nil then
+				for tabindex, i in next, result do
+					if thisSearchId ~= currentSearchId then return end
+
+					local TabIcon = SearchBarModule.Icons["Tab"]
+					local TabMainElement = CreateSearchTab(i.Title, nil, TabIcon, ScrollingFrame, true, function()
+						SearchBarModule:Close()
+						TabModule:SelectTab(tabindex)
+					end)
+
+					task.wait()
+					if thisSearchId ~= currentSearchId then return end
+
+					if i.Elements and next(i.Elements) ~= nil then
+						local containerFrame = TabMainElement:FindFirstChild("ParentContainer") 
+							and TabMainElement.ParentContainer.Frame
+
+						for elemindex, e in next, i.Elements do
+							local ElementIcon = SearchBarModule.Icons[e.__type]
+							CreateSearchTab(
+								e.Title,
+								e.Desc,
+								ElementIcon,
+								containerFrame,
+								false,
+								function()
+									SearchBarModule:Close()
+									TabModule:SelectTab(tabindex)
+									if i.Tab.ScrollToTheElement then
+										i.Tab:ScrollToTheElement(e.Index)
+									end
+								end
+							)
+
+							task.wait()
+							if thisSearchId ~= currentSearchId then return end
+						end
+					end
+				end
+			elseif query ~= "" then
+				New("TextLabel", {
+					Size = UDim2.new(1, 0, 0, 70),
+					Text = "No results found",
+					TextSize = 16,
+					ThemeTag = {
+						TextColor3 = "Text",
+					},
+					TextTransparency = 0.2,
+					BackgroundTransparency = 1,
+					FontFace = Font.new(Creator.Font, Enum.FontWeight.Medium),
+					Parent = ScrollingFrame,
+					Name = "NotFound",
+				})
+			else
+				ScrollingFrame.Visible = false
+				SearchFrame.Frame.Results.Frame.Visible = false
+			end
+		end)
 	end
 
 	Creator.AddSignal(TextBox:GetPropertyChangedSignal("Text"), function()
