@@ -183,6 +183,7 @@ function SearchBar.new(TabModule, Parent, OnClose)
 			Size = UDim2.new(1, 0, 0, 0),
 			AutomaticSize = "Y",
 			BackgroundTransparency = 1,
+			Parent = TargetParent or nil,
 		}, {
 			Creator.NewRoundFrame(SearchBarModule.Radius - 11, "Squircle", {
 				Size = UDim2.new(1, 0, 0, 0),
@@ -319,10 +320,6 @@ function SearchBar.new(TabModule, Parent, OnClose)
 				Callback()
 			end
 		end)
-
-		if TargetParent then
-			Tab.Parent = TargetParent
-		end
 
 		return Tab
 	end
