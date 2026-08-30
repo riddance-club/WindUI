@@ -65,7 +65,7 @@ function SearchBar.new(TabModule, Parent, OnClose)
 		}),
 	})
 
-	local ScrollingFrame = New("ScrollingFrame", { -- list
+	local ScrollingFrame = New("ScrollingFrame", {
 		Size = UDim2.new(1, 0, 0, 0),
 		AutomaticCanvasSize = "Y",
 		ScrollingDirection = "Y",
@@ -104,7 +104,7 @@ function SearchBar.new(TabModule, Parent, OnClose)
 			ImageTransparency = 1,
 			Name = "Frame",
 		}, {
-			New("Frame", { -- topbar search
+			New("Frame", {
 				Size = UDim2.new(1, 0, 0, 46),
 				BackgroundTransparency = 1,
 			}, {
@@ -136,7 +136,7 @@ function SearchBar.new(TabModule, Parent, OnClose)
 					}),
 				}),
 			}),
-			New("Frame", { -- results
+			New("Frame", {
 				BackgroundTransparency = 1,
 				AutomaticSize = "Y",
 				Size = UDim2.new(1, 0, 0, 0),
@@ -324,14 +324,40 @@ function SearchBar.new(TabModule, Parent, OnClose)
 		return Tab
 	end
 
-	local function ContainsText(str, query)
-		if not query or query == "" then
-			return false
+	local function CalculateElementScore(elem, queryLower, isKeySearch)
+		local title = elem.Title and string.lower(elem.Title) or ""
+		local desc = elem.Desc and string.lower(elem.Desc) or ""
+		local score = 0
+
+		if title == queryLower then
+			score += 100
+		elseif string.sub(title, 1, #queryLower) == queryLower then
+			score += 60
+		elseif string.find(title, queryLower, 1, true) then
+			score += 40
 		end
-		if not str or str == "" then
-			return false
+
+		if desc ~= "" and string.find(desc, queryLower, 1, true) then
+			score += 15
 		end
-		return string.find(string.lower(str), string.lower(query), 1, true) ~= nil
+
+		if score == 0 then
+			return 0
+		end
+
+		if elem.__type == "Toggle" or elem.__type == "Button" then
+			score += (isKeySearch and 0 or 25)
+		elseif elem.__type == "Slider" or elem.__type == "Dropdown" or elem.__type == "Colorpicker" or elem.__type == "Input" then
+			score += (isKeySearch and 0 or 20)
+		elseif elem.__type == "Keybind" then
+			if isKeySearch then
+				score += 30
+			else
+				score -= 15
+			end
+		end
+
+		return score
 	end
 
 	local function Search(query)
@@ -339,37 +365,51 @@ function SearchBar.new(TabModule, Parent, OnClose)
 			return {}
 		end
 
+		local queryLower = string.lower(query)
+		local isKeySearch = string.find(queryLower, "key", 1, true) ~= nil or string.find(queryLower, "bind", 1, true) ~= nil
+
 		local results = {}
 		for tabindex, tab in next, TabModule.Tabs do
-			local tabMatches = ContainsText(tab.Title or "", query)
+			local tabTitleLower = tab.Title and string.lower(tab.Title) or ""
+			local tabMatches = tabTitleLower ~= "" and string.find(tabTitleLower, queryLower, 1, true) ~= nil
 			local elementResults = {}
 
 			for elemindex, elem in next, tab.Elements do
-				if elem.__type ~= "Section" then
-					local titleMatches = ContainsText(elem.Title or "", query)
-					local descMatches = ContainsText(elem.Desc or "", query)
-
-					if titleMatches or descMatches then
-						elementResults[elemindex] = {
+				if elem.__type ~= "Section" and elem.__type ~= "Divider" and elem.__type ~= "Space" then
+					local score = CalculateElementScore(elem, queryLower, isKeySearch)
+					if score > 0 then
+						table.insert(elementResults, {
 							Title = elem.Title,
 							Desc = elem.Desc,
 							Original = elem,
 							__type = elem.__type,
 							Index = elemindex,
-						}
+							Score = score,
+						})
 					end
 				end
 			end
 
-			if tabMatches or next(elementResults) ~= nil then
-				results[tabindex] = {
+			table.sort(elementResults, function(a, b)
+				return a.Score > b.Score
+			end)
+
+			if tabMatches or #elementResults > 0 then
+				table.insert(results, {
 					Tab = tab,
+					TabIndex = tabindex,
 					Title = tab.Title,
 					Icon = tab.Icon,
 					Elements = elementResults,
-				}
+					Score = (#elementResults > 0 and elementResults[1].Score or 0) + (tabMatches and 50 or 0),
+				})
 			end
 		end
+
+		table.sort(results, function(a, b)
+			return a.Score > b.Score
+		end)
+
 		return results
 	end
 
@@ -437,25 +477,27 @@ function SearchBar.new(TabModule, Parent, OnClose)
 				end
 			end
 
-			if result and next(result) ~= nil then
-				for tabindex, i in next, result do
+			if result and #result > 0 then
+				for _, i in ipairs(result) do
 					if thisSearchId ~= currentSearchId then return end
 
 					local TabIcon = SearchBarModule.Icons["Tab"]
 					local TabMainElement = CreateSearchTab(i.Title, nil, TabIcon, ScrollingFrame, true, function()
 						SearchBarModule:Close()
-						TabModule:SelectTab(tabindex)
+						TabModule:SelectTab(i.TabIndex)
 					end)
 
 					task.wait()
 					if thisSearchId ~= currentSearchId then return end
 
-					if i.Elements and next(i.Elements) ~= nil then
+					if i.Elements and #i.Elements > 0 then
 						local containerFrame = TabMainElement:FindFirstChild("ParentContainer") 
 							and TabMainElement.ParentContainer.Frame
 
-						for elemindex, e in next, i.Elements do
-							local ElementIcon = SearchBarModule.Icons[e.__type]
+						for _, e in ipairs(i.Elements) do
+							if thisSearchId ~= currentSearchId then return end
+
+							local ElementIcon = SearchBarModule.Icons[e.__type] or SearchBarModule.Icons["Button"]
 							CreateSearchTab(
 								e.Title,
 								e.Desc,
@@ -464,7 +506,7 @@ function SearchBar.new(TabModule, Parent, OnClose)
 								false,
 								function()
 									SearchBarModule:Close()
-									TabModule:SelectTab(tabindex)
+									TabModule:SelectTab(i.TabIndex)
 									if i.Tab.ScrollToTheElement then
 										i.Tab:ScrollToTheElement(e.Index)
 									end
