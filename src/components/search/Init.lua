@@ -324,40 +324,125 @@ function SearchBar.new(TabModule, Parent, OnClose)
 		return Tab
 	end
 
-	local function CalculateElementScore(elem, queryLower, isKeySearch)
-		local title = elem.Title and string.lower(elem.Title) or ""
-		local desc = elem.Desc and string.lower(elem.Desc) or ""
-		local score = 0
-
-		if title == queryLower then
-			score += 100
-		elseif string.sub(title, 1, #queryLower) == queryLower then
-			score += 60
-		elseif string.find(title, queryLower, 1, true) then
-			score += 40
+	local function CleanText(str)
+		if not str or type(str) ~= "string" then return "" end
+		local cleaned = string.gsub(str, "<[^<>]->", "")
+		return string.lower(cleaned)
+	end
+	
+	local function GetElementDetails(elem)
+		local rawTitle = elem.Title or elem.Name or elem.Text or elem.Header or elem.Label
+		if not rawTitle and elem.Config and type(elem.Config) == "table" then
+			rawTitle = elem.Config.Title or elem.Config.Name or elem.Config.Text
 		end
 
-		if desc ~= "" and string.find(desc, queryLower, 1, true) then
-			score += 15
+		local rawDesc = elem.Desc or elem.Description or elem.Tooltip or elem.SubTitle or elem.SubText
+		if not rawDesc and elem.Config and type(elem.Config) == "table" then
+			rawDesc = elem.Config.Desc or elem.Config.Description or elem.Config.Tooltip
+		end
+
+		local elemType = elem.__type or elem.Type or (elem.Config and elem.Config.Type) or "Button"
+
+		return rawTitle and tostring(rawTitle) or "", rawDesc and tostring(rawDesc) or nil, tostring(elemType)
+	end
+
+	local function CalculateElementScore(title, desc, elemType, queryLower, queryWords, isKeySearch)
+		local cleanTitle = CleanText(title)
+		local cleanDesc = CleanText(desc)
+		local score = 0
+
+		if cleanTitle == queryLower then
+			score = score + 120
+		elseif string.sub(cleanTitle, 1, #queryLower) == queryLower then
+			score = score + 70
+		elseif string.find(cleanTitle, queryLower, 1, true) then
+			score = score + 50
+		elseif cleanDesc ~= "" and string.find(cleanDesc, queryLower, 1, true) then
+			score = score + 20
+		else
+			local allWordsMatchTitle = true
+			local allWordsMatchCombined = true
+
+			for _, word in ipairs(queryWords) do
+				local inTitle = string.find(cleanTitle, word, 1, true) ~= nil
+				local inDesc = cleanDesc ~= "" and string.find(cleanDesc, word, 1, true) ~= nil
+
+				if not inTitle then
+					allWordsMatchTitle = false
+				end
+				if not inTitle and not inDesc then
+					allWordsMatchCombined = false
+				end
+			end
+
+			if allWordsMatchTitle then
+				score = score + 45
+			elseif allWordsMatchCombined then
+				score = score + 25
+			end
 		end
 
 		if score == 0 then
 			return 0
 		end
 
-		if elem.__type == "Toggle" or elem.__type == "Button" then
-			score += (isKeySearch and 0 or 25)
-		elseif elem.__type == "Slider" or elem.__type == "Dropdown" or elem.__type == "Colorpicker" or elem.__type == "Input" then
-			score += (isKeySearch and 0 or 20)
-		elseif elem.__type == "Keybind" then
+		if elemType == "Toggle" or elemType == "Button" then
+			score = score + (isKeySearch and 0 or 30)
+		elseif elemType == "Slider" or elemType == "Dropdown" or elemType == "Colorpicker" or elemType == "Input" then
+			score = score + (isKeySearch and 0 or 25)
+		elseif elemType == "Keybind" then
 			if isKeySearch then
-				score += 30
+				score = score + 35
 			else
-				score -= 15
+				score = score - 15
 			end
 		end
 
 		return score
+	end
+
+	local function CollectElements(container, list, visited)
+		if not container or type(container) ~= "table" then return end
+		visited = visited or {}
+		if visited[container] then return end
+		visited[container] = true
+
+		local elementsTable = container.Elements or container
+		if type(elementsTable) == "table" then
+			for elemIndex, elem in next, elementsTable do
+				if type(elem) == "table" then
+					local rawTitle, rawDesc, elemType = GetElementDetails(elem)
+
+					if elemType == "Section" or elem.Elements or elem.Children or elem.Items then
+						if elem.Elements and type(elem.Elements) == "table" then
+							CollectElements(elem.Elements, list, visited)
+						end
+						if elem.Children and type(elem.Children) == "table" then
+							CollectElements(elem.Children, list, visited)
+						end
+						if elem.Items and type(elem.Items) == "table" then
+							CollectElements(elem.Items, list, visited)
+						end
+					end
+
+					if elemType ~= "Section" and elemType ~= "Divider" and elemType ~= "Space" then
+						table.insert(list, {
+							Title = rawTitle,
+							Desc = rawDesc,
+							__type = elemType,
+							Original = elem,
+							Index = elemIndex,
+						})
+					end
+				end
+			end
+		end
+
+		if container.Sections and type(container.Sections) == "table" then
+			for _, section in next, container.Sections do
+				CollectElements(section, list, visited)
+			end
+		end
 	end
 
 	local function Search(query)
@@ -365,28 +450,35 @@ function SearchBar.new(TabModule, Parent, OnClose)
 			return {}
 		end
 
-		local queryLower = string.lower(query)
+		local queryLower = CleanText(query)
 		local isKeySearch = string.find(queryLower, "key", 1, true) ~= nil or string.find(queryLower, "bind", 1, true) ~= nil
+
+		local queryWords = {}
+		for word in string.gmatch(queryLower, "%S+") do
+			table.insert(queryWords, word)
+		end
 
 		local results = {}
 		for tabindex, tab in next, TabModule.Tabs do
-			local tabTitleLower = tab.Title and string.lower(tab.Title) or ""
-			local tabMatches = tabTitleLower ~= "" and string.find(tabTitleLower, queryLower, 1, true) ~= nil
-			local elementResults = {}
+			local tabTitle = tab.Title or (tab.Config and tab.Config.Title) or ""
+			local cleanTabTitle = CleanText(tabTitle)
+			local tabMatches = cleanTabTitle ~= "" and string.find(cleanTabTitle, queryLower, 1, true) ~= nil
 
-			for elemindex, elem in next, tab.Elements do
-				if elem.__type ~= "Section" and elem.__type ~= "Divider" and elem.__type ~= "Space" then
-					local score = CalculateElementScore(elem, queryLower, isKeySearch)
-					if score > 0 then
-						table.insert(elementResults, {
-							Title = elem.Title,
-							Desc = elem.Desc,
-							Original = elem,
-							__type = elem.__type,
-							Index = elemindex,
-							Score = score,
-						})
-					end
+			local allElements = {}
+			CollectElements(tab, allElements)
+
+			local elementResults = {}
+			for _, elem in ipairs(allElements) do
+				local score = CalculateElementScore(elem.Title, elem.Desc, elem.__type, queryLower, queryWords, isKeySearch)
+				if score > 0 then
+					table.insert(elementResults, {
+						Title = elem.Title,
+						Desc = elem.Desc,
+						Original = elem.Original,
+						__type = elem.__type,
+						Index = elem.Index,
+						Score = score,
+					})
 				end
 			end
 
@@ -398,7 +490,7 @@ function SearchBar.new(TabModule, Parent, OnClose)
 				table.insert(results, {
 					Tab = tab,
 					TabIndex = tabindex,
-					Title = tab.Title,
+					Title = tabTitle,
 					Icon = tab.Icon,
 					Elements = elementResults,
 					Score = (#elementResults > 0 and elementResults[1].Score or 0) + (tabMatches and 50 or 0),
@@ -509,6 +601,8 @@ function SearchBar.new(TabModule, Parent, OnClose)
 									TabModule:SelectTab(i.TabIndex)
 									if i.Tab.ScrollToTheElement then
 										i.Tab:ScrollToTheElement(e.Index)
+									elseif e.Original and e.Original.ScrollTo then
+										e.Original:ScrollTo()
 									end
 								end
 							)
