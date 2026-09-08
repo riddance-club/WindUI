@@ -5,7 +5,7 @@ end)
 local Players = game:GetService("Players")
 
 local UserInputService = cloneref(game:GetService("UserInputService"))
-local Mouse = Players.LocalPlayer:GetMouse()
+local Mouse = cloneref(Players.LocalPlayer:GetMouse())
 
 local Creator = require("../../modules/Creator")
 local New = Creator.New

@@ -13,7 +13,7 @@ local Players = cloneref(game:GetService("Players"))
 
 local RenderStepped = RunService.RenderStepped
 local LocalPlayer = Players.LocalPlayer
-local Mouse = LocalPlayer:GetMouse()
+local Mouse = cloneref(LocalPlayer:GetMouse())
 
 local CreateButton = require("../components/ui/Button").New
 local CreateInput = require("../components/ui/Input").New
