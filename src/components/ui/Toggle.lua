@@ -43,15 +43,16 @@ function Toggle.New(Value, Icon, IconSize, Parent, Callback, NewElement, Config)
 
 	local Radius = 24 / 2
 	local IconToggleFrame
-	if Icon and Icon ~= "" then
+	local IconData = Creator.Icon(Icon)
+	if Icon and Icon ~= "" and IconData then
 		IconToggleFrame = New("ImageLabel", {
 			Size = UDim2.new(0, 20 - 7, 0, 20 - 7),
 			BackgroundTransparency = 1,
 			AnchorPoint = Vector2.new(0.5, 0.5),
 			Position = UDim2.new(0.5, 0, 0.5, 0),
-			Image = Creator.Icon(Icon)[1],
-			ImageRectOffset = Creator.Icon(Icon)[2].ImageRectPosition,
-			ImageRectSize = Creator.Icon(Icon)[2].ImageRectSize,
+			Image = IconData[1],
+			ImageRectOffset = IconData[2].ImageRectPosition,
+			ImageRectSize = IconData[2].ImageRectSize,
 			ImageTransparency = 1,
 			ImageColor3 = Color3.new(0, 0, 0),
 		})
@@ -82,88 +83,20 @@ function Toggle.New(Value, Icon, IconSize, Parent, Callback, NewElement, Config)
 			},
 			ImageTransparency = 1, -- 0
 		}),
-		Creator.NewRoundFrame(Radius, "SquircleOutline", {
-			Size = UDim2.new(1, 0, 1, 0),
-			Name = "Stroke",
-			ImageColor3 = Color3.new(1, 1, 1),
-			ImageTransparency = 1, -- .95
-		}, {
-			New("UIGradient", {
-				Rotation = 90,
-				Transparency = NumberSequence.new({
-					NumberSequenceKeypoint.new(0, 0),
-					NumberSequenceKeypoint.new(1, 1),
-				}),
-			}),
-		}),
-
-		--bar
 		Creator.NewRoundFrame(Radius, "Squircle", {
 			Size = UDim2.new(0, NewElement and 30 or 20, 0, 20),
 			Position = UDim2.new(0, 2, 0.5, 0),
 			AnchorPoint = Vector2.new(0, 0.5),
-			ImageTransparency = 1,
+			ImageTransparency = 0,
+			ImageColor3 = Color3.new(1, 1, 1),
+			ThemeTag = {
+				ImageColor3 = "ToggleBar",
+			},
 			Name = "Frame",
 		}, {
-			Creator.NewRoundFrame(Radius, "Squircle", {
-				Size = UDim2.new(1, 0, 1, 0),
-				ImageTransparency = 0,
-				AnchorPoint = Vector2.new(0.5, 0.5),
-				Position = UDim2.new(0.5, 0, 0.5, 0),
-				Name = "Bar",
-			}, {
-				Creator.New("Frame", {
-					Size = UDim2.new(1, 0, 1, 0),
-					BackgroundColor3 = Color3.new(1, 1, 1),
-					Name = "Highlight",
-					BackgroundTransparency = 1,
-				}, {
-					Creator.NewRoundFrame(9999, "SquircleGlass", {
-						Size = UDim2.new(1, 1, 1, 1),
-						ImageColor3 = Color3.new(1, 1, 1),
-						Name = "SquircleGlass",
-						ImageTransparency = 0.5,
-						AnchorPoint = Vector2.new(0.5, 0.5),
-						Position = UDim2.new(0.5, 0, 0.5, 0),
-					}),
-					Creator.NewRoundFrame(Radius, "Squircle", {
-						Size = UDim2.new(1, 0, 1, 0),
-						Name = "GlassBackground",
-						ImageTransparency = 0,
-						ThemeTag = {
-							ImageColor3 = "ElementBackground",
-						},
-						ZIndex = -1,
-					}),
-					New("ImageLabel", {
-						Size = UDim2.new(1, 0, 1, 0),
-						BackgroundTransparency = 1,
-						Name = "Glass",
-						ImageTransparency = 0,
-					}, {
-						New("UICorner", {
-							CornerRadius = UDim.new(1, 0),
-						}),
-					}),
-					--[[Creator.NewRoundFrame(Radius, "Glass-1.4", {
-						Size = UDim2.new(1, 0, 1, 0),
-						ImageColor3 = Color3.new(1, 1, 1),
-						Name = "Highlight",
-						ImageTransparency = 0.3,
-					}),]]
-					Creator.NewRoundFrame(Radius, "Squircle", {
-						Size = UDim2.new(1, 0, 1, 0),
-						Name = "BarOverlay",
-						ThemeTag = {
-							ImageColor3 = "ToggleBar",
-						},
-						ZIndex = 999,
-					}),
-				}),
-				IconToggleFrame,
-				New("UIScale", {
-					Scale = 1, -- 1.66
-				}),
+			IconToggleFrame,
+			New("UIScale", {
+				Scale = 1,
 			}),
 		}),
 		New("TextButton", {
@@ -184,32 +117,9 @@ function Toggle.New(Value, Icon, IconSize, Parent, Callback, NewElement, Config)
 
 	function Toggle:Set(Toggled, isCallback, isAnim)
 		if not isAnim then
-			if Toggled then
-				Tween(ToggleFrame.Frame, 0.35, {
-					Position = UDim2.new(0, ToggleWidth - FrameWidth - 2, 0.5, 0),
-				}, Enum.EasingStyle.Back, Enum.EasingDirection.Out):Play()
-				Creator.SetThemeTag(ToggleFrame.Frame.Bar.Highlight.Glass, { ImageColor3 = "Toggle" }, 0.15)
-
-				Tween(
-					ToggleFrame.Frame.Bar.Highlight.Glass,
-					0.15,
-					{ ImageTransparency = 0 },
-					Enum.EasingStyle.Quint,
-					Enum.EasingDirection.Out
-				):Play()
-			else
-				Tween(ToggleFrame.Frame, 0.35, {
-					Position = UDim2.new(0, 2, 0.5, 0),
-				}, Enum.EasingStyle.Back, Enum.EasingDirection.Out):Play()
-				Creator.SetThemeTag(ToggleFrame.Frame.Bar.Highlight.Glass, { ImageColor3 = "Text" }, 0.15)
-				Tween(
-					ToggleFrame.Frame.Bar.Highlight.Glass,
-					0.15,
-					{ ImageTransparency = 0.85 },
-					Enum.EasingStyle.Quint,
-					Enum.EasingDirection.Out
-				):Play()
-			end
+			local Target = Toggled and UDim2.new(0, ToggleWidth - FrameWidth - 2, 0.5, 0)
+				or UDim2.new(0, 2, 0.5, 0)
+			Tween(ToggleFrame.Frame, 0.3, { Position = Target }, Enum.EasingStyle.Quint, Enum.EasingDirection.Out):Play()
 		else
 			if Toggled then
 				ToggleFrame.Frame.Position = UDim2.new(0, ToggleWidth - FrameWidth - 2, 0.5, 0)
@@ -218,54 +128,14 @@ function Toggle.New(Value, Icon, IconSize, Parent, Callback, NewElement, Config)
 			end
 		end
 
-		if Toggled then
-			Tween(ToggleFrame.Layer, 0.1, {
-				ImageTransparency = 0,
+		Tween(ToggleFrame.Layer, 0.1, {
+			ImageTransparency = Toggled and 0 or 1,
+		}):Play()
+
+		if IconToggleFrame then
+			Tween(IconToggleFrame, 0.1, {
+				ImageTransparency = Toggled and 0 or 1,
 			}):Play()
-			Creator.SetThemeTag(ToggleFrame.Frame.Bar.Highlight.Glass, { ImageColor3 = "Toggle" }, 0.1)
-			Tween(
-				ToggleFrame.Frame.Bar.Highlight.Glass,
-				0.1,
-				{ ImageTransparency = 0 },
-				Enum.EasingStyle.Quint,
-				Enum.EasingDirection.Out
-			):Play()
-
-			if IconToggleFrame then
-				Tween(IconToggleFrame, 0.1, {
-					ImageTransparency = 0,
-				}):Play()
-			end
-
-			local Id, RectSize, RectOffset = Toggle:GetGlassFrame(1)
-
-			ToggleFrame.Frame.Bar.Highlight.Glass.Image = Id
-			ToggleFrame.Frame.Bar.Highlight.Glass.ImageRectSize = RectSize
-			ToggleFrame.Frame.Bar.Highlight.Glass.ImageRectOffset = RectOffset
-		else
-			Tween(ToggleFrame.Layer, 0.1, {
-				ImageTransparency = 1,
-			}):Play()
-			Creator.SetThemeTag(ToggleFrame.Frame.Bar.Highlight.Glass, { ImageColor3 = "Text" }, 0.1)
-			Tween(
-				ToggleFrame.Frame.Bar.Highlight.Glass,
-				0.1,
-				{ ImageTransparency = 0.85 },
-				Enum.EasingStyle.Quint,
-				Enum.EasingDirection.Out
-			):Play()
-
-			if IconToggleFrame then
-				Tween(IconToggleFrame, 0.1, {
-					ImageTransparency = 1,
-				}):Play()
-			end
-
-			local Id, RectSize, RectOffset = Toggle:GetGlassFrame(0)
-
-			ToggleFrame.Frame.Bar.Highlight.Glass.Image = Id
-			ToggleFrame.Frame.Bar.Highlight.Glass.ImageRectSize = RectSize
-			ToggleFrame.Frame.Bar.Highlight.Glass.ImageRectOffset = RectOffset
 		end
 
 		isCallback = isCallback ~= false
@@ -288,16 +158,9 @@ function Toggle.New(Value, Icon, IconSize, Parent, Callback, NewElement, Config)
 			local hasDragged = false
 
 			Tween(
-				ToggleFrame.Frame.Bar.UIScale,
+				ToggleFrame.Frame.UIScale,
 				0.28,
 				{ Scale = 1.5 },
-				Enum.EasingStyle.Quint,
-				Enum.EasingDirection.Out
-			):Play()
-			Tween(
-				ToggleFrame.Frame.Bar.Highlight.BarOverlay,
-				0.28,
-				{ ImageTransparency = 0.86 },
 				Enum.EasingStyle.Quint,
 				Enum.EasingDirection.Out
 			):Play()
@@ -330,15 +193,6 @@ function Toggle.New(Value, Icon, IconSize, Parent, Callback, NewElement, Config)
 				local mouseDelta = inputChanged.Position.X - startMouseX
 				local newX = math.max(2, math.min(startFrameX + mouseDelta, ToggleWidth - FrameWidth - 2))
 
-				local Percent = math.clamp((newX - 2) / (ToggleWidth - FrameWidth - 4), 0, 1)
-
-				local Id, RectSize, RectOffset = Toggle:GetGlassFrame(Percent)
-				local Glass = ToggleFrame.Frame.Bar.Highlight.Glass
-				if Glass.Image ~= Id then
-					Glass.Image = Id
-					Glass.ImageRectSize = RectSize
-					Glass.ImageRectOffset = RectOffset
-				end
 
 				-- Directly track the pointer; a 0.12s tween per mouse-move can
 				-- never finish and just churns TweenService every frame.
@@ -387,16 +241,9 @@ function Toggle.New(Value, Icon, IconSize, Parent, Callback, NewElement, Config)
 				end
 
 				Tween(
-					ToggleFrame.Frame.Bar.UIScale,
+					ToggleFrame.Frame.UIScale,
 					0.23,
 					{ Scale = 1 },
-					Enum.EasingStyle.Quint,
-					Enum.EasingDirection.Out
-				):Play()
-				Tween(
-					ToggleFrame.Frame.Bar.Highlight.BarOverlay,
-					0.23,
-					{ ImageTransparency = 0 },
 					Enum.EasingStyle.Quint,
 					Enum.EasingDirection.Out
 				):Play()

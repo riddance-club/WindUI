@@ -28,13 +28,9 @@ function Element:New(Config)
 	HStackModule.ElementFrame = HStackFrame
 
 	local ElementsModule = Config.ElementsModule
-	ElementsModule.Load(
-		HStackModule,
-		HStackFrame,
-		ElementsModule.Elements,
-		Config.Window,
-		Config.WindUI,
-		function(CurrentElement, AllElements)
+	local layoutPending = false
+
+	local function ApplyLayout(AllElements)
 			local Gap = Config.Tab and Config.Tab.Gap or (Config.Window.NewElements and 1 or 6)
 
 			local StretchableElements = {}
@@ -74,7 +70,26 @@ function Element:New(Config)
 					Element.ElementFrame.Size = UDim2.new(ElementWidthScale, Offset, 1, 0)
 				end
 			end
-		end,
+	end
+
+	local function ScheduleLayout()
+		if layoutPending then
+			return
+		end
+		layoutPending = true
+		task.defer(function()
+			layoutPending = false
+			ApplyLayout(HStackModule.Elements)
+		end)
+	end
+
+	ElementsModule.Load(
+		HStackModule,
+		HStackFrame,
+		ElementsModule.Elements,
+		Config.Window,
+		Config.WindUI,
+		ScheduleLayout,
 		ElementsModule,
 		Config.UIScale,
 		Config.Tab

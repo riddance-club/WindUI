@@ -38,15 +38,16 @@ function OpenButton.New(Window)
         AutomaticSize = "XY",
     })
 
+    local DragIconData = Creator.Icon("move")
     local Drag = New("Frame", {
         Size = UDim2.new(0,44-8,0,44-8),
         BackgroundTransparency = 1, 
         Name = "Drag",
     }, {
         New("ImageLabel", {
-            Image = Creator.Icon("move")[1],
-            ImageRectOffset = Creator.Icon("move")[2].ImageRectPosition,
-            ImageRectSize = Creator.Icon("move")[2].ImageRectSize,
+            Image = DragIconData and DragIconData[1],
+            ImageRectOffset = DragIconData and DragIconData[2] and DragIconData[2].ImageRectPosition,
+            ImageRectSize = DragIconData and DragIconData[2] and DragIconData[2].ImageRectSize,
             Size = UDim2.new(0,18,0,18),
             BackgroundTransparency = 1,
             Position = UDim2.new(0.5,0,0.5,0),
@@ -100,7 +101,7 @@ function OpenButton.New(Window)
             Transparency = 0,
         }, {
             New("UIGradient", {
-                Color = ColorSequence.new(Color3.fromHex("40c9ff"), Color3.fromHex("e81cff"))
+                Color = ColorSequence.new(Color3.fromHex("#ffffff"), Color3.fromHex("#ffffff"))
             })
         }),
         Drag,

@@ -95,7 +95,7 @@ function TabModule.New(Config, UIScale)
 		},
 		ImageTransparency = 1,
 	}, {
-		Creator.NewRoundFrame(Tab.UICorner - 1, "Glass-1.4", {
+		Creator.NewRoundFrame(Tab.UICorner - 1, "SquircleOutline", {
 			Size = UDim2.new(1, 1, 1, 1),
 			ThemeTag = {
 				ImageColor3 = "TabBorder",
@@ -204,7 +204,7 @@ function TabModule.New(Config, UIScale)
 					Icon,
 					Creator.NewRoundFrame(
 						Tab.IconShape ~= "Circle" and (Tab.UICorner + 5 - (2 + (Window.UIPadding / 4))) or 9999,
-						"Glass-1.4",
+						"SquircleOutline",
 						{
 							Size = UDim2.new(1, 0, 1, 0),
 							ThemeTag = {
@@ -582,7 +582,18 @@ function TabModule:OnChange(func)
 end
 
 function TabModule:SelectTab(TabIndex)
-	if not TabModule.Tabs[TabIndex].Locked then
+	-- Accept either a tab object or its index (Window:SelectTab(tab) is a
+	-- common call style and used to error when passed the object).
+	if typeof(TabIndex) == "table" then
+		TabIndex = TabIndex.Index
+	end
+
+	local TargetTab = TabIndex and TabModule.Tabs[TabIndex]
+	if not TargetTab or TargetTab.Locked or TabModule.SelectedTab == TabIndex then
+		return
+	end
+
+	if not TargetTab.Locked then
 		TabModule.SelectedTab = TabIndex
 
 		for _, TabObject in next, TabModule.Tabs do

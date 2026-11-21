@@ -43,7 +43,7 @@ function Checkbox.New(Value, Icon, IconSize, Parent, Callback, Config)
             },
             ImageTransparency = 1, -- 0
         }),
-        Creator.NewRoundFrame(Radius, "Glass-1.4", {
+        Creator.NewRoundFrame(Radius, "SquircleOutline", {
             Size = UDim2.new(1,0,1,0),
             Name = "Stroke",
             ThemeTag = {

@@ -819,14 +819,6 @@ function Element:New(Config)
 		AnchorPoint = Vector2.new(1, 0),
 		Position = UDim2.new(1, 0, 0, 0),
 		ZIndex = 2,
-	}, {
-		Creator.NewRoundFrame(Element.UICorner, "SquircleGlass", {
-			Size = UDim2.new(1, 0, 1, 0),
-			ThemeTag = {
-				ImageColor3 = "Outline",
-			},
-			ImageTransparency = 0.55,
-		}),
 	}, true)
 
 	function Colorpicker:Lock()

@@ -156,10 +156,26 @@ local function getHighlight(tokens, index)
 	end
 end
 
+local cache = {}
+local cacheCount = 0
+local cacheBytes = 0
+local CACHE_LIMIT = 16
+local CACHE_BYTES_LIMIT = 2 * 1024 * 1024
+local hexCache = {}
+
 function highlighter.run(source, newColors)
 	if newColors ~= nil then
 		for name, color in next, newColors do
 			colors[name] = color
+		end
+		-- Colors changed; previously cached markup is no longer valid.
+		cache = {}
+		cacheCount = 0
+		cacheBytes = 0
+	else
+		local cached = cache[source]
+		if cached then
+			return cached
 		end
 	end
 
@@ -230,19 +246,37 @@ function highlighter.run(source, newColors)
 		local highlight = getHighlight(tokens, i)
 
 		if highlight then
-			local syntax = string.format(
-				'<font color = "#%s">%s</font>',
-				highlight:ToHex(),
-				token:gsub("<", "&lt;"):gsub(">", "&gt;")
-			)
+			local escaped = token
+			if string.find(escaped, "[<>]") then
+				escaped = escaped:gsub("<", "&lt;"):gsub(">", "&gt;")
+			end
 
-			table.insert(highlighted, syntax)
+			local hex = hexCache[highlight]
+			if not hex then
+				hex = highlight:ToHex()
+				hexCache[highlight] = hex
+			end
+
+			table.insert(highlighted, string.format('<font color = "#%s">%s</font>', hex, escaped))
 		else
 			table.insert(highlighted, token)
 		end
 	end
 
-	return table.concat(highlighted)
+	local result = table.concat(highlighted)
+
+	if newColors == nil and #source <= 65536 then
+		if cacheCount >= CACHE_LIMIT or cacheBytes + #result > CACHE_BYTES_LIMIT then
+			cache = {}
+			cacheCount = 0
+			cacheBytes = 0
+		end
+		cache[source] = result
+		cacheCount = cacheCount + 1
+		cacheBytes = cacheBytes + #result
+	end
+
+	return result
 end
 
 return highlighter

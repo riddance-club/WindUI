@@ -8,7 +8,8 @@ local New = Creator.New
 
 
 local viewportPointToWorld, getOffset = unpack(require("./Utils"))
-local BlurFolder = Instance.new("Folder", cloneref(game:GetService("Workspace")).CurrentCamera)
+local Workspace = cloneref(game:GetService("Workspace"))
+local BlurFolder = Workspace.CurrentCamera and Instance.new("Folder", Workspace.CurrentCamera)
 
 
 local function createAcrylic()
@@ -51,17 +52,16 @@ local function createAcrylicBlur(distance)
 		positions.bottomRight = position + size
 	end
 
+	local renderScheduled = false
+
 	local function render()
-		local res = cloneref(game:GetService("Workspace")).CurrentCamera
-		if res then
-			res = res.CFrame
-		end
-		local cond = res
-		if not cond then
-			cond = CFrame.new()
+		local camera = Workspace.CurrentCamera
+		-- Nothing to draw while the acrylic layer is hidden.
+		if not camera or model.Transparency >= 1 then
+			return
 		end
 
-		local camera = cond
+		camera = camera.CFrame
 		local topLeft = positions.topLeft
 		local topRight = positions.topRight
 		local bottomRight = positions.bottomRight
@@ -78,25 +78,36 @@ local function createAcrylicBlur(distance)
 		model.Mesh.Scale = Vector3.new(width, height, 0)
 	end
 
+	local function scheduleRender()
+		if renderScheduled then
+			return
+		end
+		renderScheduled = true
+		task.defer(function()
+			renderScheduled = false
+			render()
+		end)
+	end
+
 	local function onChange(rbx)
 		local offset = getOffset()
 		local size = rbx.AbsoluteSize - Vector2.new(offset, offset)
 		local position = rbx.AbsolutePosition + Vector2.new(offset / 2, offset / 2)
 
 		updatePositions(size, position)
-		task.spawn(render)
+		scheduleRender()
 	end
 
 	local function renderOnChange()
-		local camera = cloneref(game:GetService("Workspace")).CurrentCamera
+		local camera = Workspace.CurrentCamera
 		if not camera then
 			return
 		end
 
-		table.insert(cleanups, camera:GetPropertyChangedSignal("CFrame"):Connect(render))
-		table.insert(cleanups, camera:GetPropertyChangedSignal("ViewportSize"):Connect(render))
-		table.insert(cleanups, camera:GetPropertyChangedSignal("FieldOfView"):Connect(render))
-		task.spawn(render)
+		table.insert(cleanups, camera:GetPropertyChangedSignal("CFrame"):Connect(scheduleRender))
+		table.insert(cleanups, camera:GetPropertyChangedSignal("ViewportSize"):Connect(scheduleRender))
+		table.insert(cleanups, camera:GetPropertyChangedSignal("FieldOfView"):Connect(scheduleRender))
+		scheduleRender()
 	end
 
 	model.Destroying:Connect(function()
@@ -131,7 +142,7 @@ return function(distance)
 
 	Blur.AddParent = function(Parent)
 		Creator.AddSignal(Parent:GetPropertyChangedSignal("Visible"), function()
-			--Blur.SetVisibility(Parent.Visible)
+			model.Transparency = Parent.Visible and 0.98 or 1
 		end)
 	end
 

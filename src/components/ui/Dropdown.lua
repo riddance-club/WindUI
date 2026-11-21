@@ -320,7 +320,7 @@ function DropdownMenu.New(Config, Dropdown, Element, Type)
 						Active = not TabMain.Locked,
 					},
 					{
-						Creator.NewRoundFrame(Element.MenuCorner - Element.MenuPadding, "Glass-1.4", {
+						Creator.NewRoundFrame(Element.MenuCorner - Element.MenuPadding, "SquircleOutline", {
 							Size = UDim2.new(1, 0, 1, 0),
 							ThemeTag = {
 								ImageColor3 = "DropdownTabBorder",

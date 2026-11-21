@@ -43,10 +43,11 @@ function SearchBar.new(TabModule, Parent, OnClose)
 		TextSize = 18,
 	})
 
+	local CloseIconData = Creator.Icon("x")
 	local CloseButton = New("ImageLabel", {
-		Image = Creator.Icon("x")[1],
-		ImageRectSize = Creator.Icon("x")[2].ImageRectSize,
-		ImageRectOffset = Creator.Icon("x")[2].ImageRectPosition,
+		Image = CloseIconData and CloseIconData[1],
+		ImageRectSize = CloseIconData and CloseIconData[2] and CloseIconData[2].ImageRectSize,
+		ImageRectOffset = CloseIconData and CloseIconData[2] and CloseIconData[2].ImageRectPosition,
 		BackgroundTransparency = 1,
 		ThemeTag = {
 			ImageColor3 = "Icon",
@@ -87,6 +88,7 @@ function SearchBar.new(TabModule, Parent, OnClose)
 		}),
 	})
 
+	local SearchIconData = Creator.Icon("search")
 	local SearchFrame = Creator.NewRoundFrame(SearchBarModule.Radius, "Squircle", {
 		Size = UDim2.new(1, 0, 1, 0),
 		ThemeTag = {
@@ -113,9 +115,9 @@ function SearchBar.new(TabModule, Parent, OnClose)
 					BackgroundTransparency = 1,
 				}, {
 					New("ImageLabel", {
-						Image = Creator.Icon("search")[1],
-						ImageRectSize = Creator.Icon("search")[2].ImageRectSize,
-						ImageRectOffset = Creator.Icon("search")[2].ImageRectPosition,
+						Image = SearchIconData and SearchIconData[1],
+						ImageRectSize = SearchIconData and SearchIconData[2] and SearchIconData[2].ImageRectSize,
+						ImageRectOffset = SearchIconData and SearchIconData[2] and SearchIconData[2].ImageRectPosition,
 						BackgroundTransparency = 1,
 						ThemeTag = {
 							ImageColor3 = "Icon",
@@ -179,6 +181,7 @@ function SearchBar.new(TabModule, Parent, OnClose)
 	})
 
 	local function CreateSearchTab(Title, Desc, Icon, TargetParent, IsParent, Callback)
+		local TabIconData = Creator.Icon(Icon)
 		local Tab = New("TextButton", {
 			Size = UDim2.new(1, 0, 0, 0),
 			AutomaticSize = "Y",
@@ -195,7 +198,7 @@ function SearchBar.new(TabModule, Parent, OnClose)
 				ImageTransparency = 1,
 				Name = "Main",
 			}, {
-				Creator.NewRoundFrame(SearchBarModule.Radius - 11, "Glass-1", {
+				Creator.NewRoundFrame(SearchBarModule.Radius - 11, "SquircleOutline", {
 					Size = UDim2.new(1, 0, 1, 0),
 					Position = UDim2.new(0.5, 0, 0.5, 0),
 					AnchorPoint = Vector2.new(0.5, 0.5),
@@ -212,9 +215,9 @@ function SearchBar.new(TabModule, Parent, OnClose)
 						PaddingBottom = UDim.new(0, SearchBarModule.Padding - 2),
 					}),
 					New("ImageLabel", {
-						Image = Creator.Icon(Icon)[1],
-						ImageRectSize = Creator.Icon(Icon)[2].ImageRectSize,
-						ImageRectOffset = Creator.Icon(Icon)[2].ImageRectPosition,
+						Image = TabIconData and TabIconData[1],
+						ImageRectSize = TabIconData and TabIconData[2] and TabIconData[2].ImageRectSize,
+						ImageRectOffset = TabIconData and TabIconData[2] and TabIconData[2].ImageRectPosition,
 						BackgroundTransparency = 1,
 						ThemeTag = {
 							ImageColor3 = "Icon",

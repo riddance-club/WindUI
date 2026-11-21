@@ -312,9 +312,17 @@ function KeySystem.new(Config, Filename, func, keyValidator)
 					table.insert(args, i[argName])
 				end
 
-				local serviceInstance = serviceDef.New(table.unpack(args))
-				serviceInstance.Type = i.Type
-				table.insert(Services, serviceInstance)
+				-- Build the provider only when it is actually used (Copy/Verify).
+				-- Constructing these eagerly blocks the dialog on network I/O.
+				local serviceInstance
+				local function GetService()
+					if not serviceInstance then
+						serviceInstance = serviceDef.New(table.unpack(args))
+						serviceInstance.Type = i.Type
+					end
+					return serviceInstance
+				end
+				table.insert(Services, { Type = i.Type, Get = GetService })
 
 				local IconFrame = Creator.Image(
 					i.Icon or serviceDef.Icon or Icons[i.Type] or "user",
@@ -390,7 +398,7 @@ function KeySystem.new(Config, Filename, func, keyValidator)
 					Tween(APIFrame, 0.08, { ImageTransparency = 1 }):Play()
 				end)
 				Creator.AddSignal(APIFrame.MouseButton1Click, function()
-					serviceInstance.Copy()
+					GetService().Copy()
 					Config.WindUI:Notify({
 						Title = "Key System",
 						Content = "Key link copied to clipboard.",
@@ -469,7 +477,7 @@ function KeySystem.new(Config, Filename, func, keyValidator)
 		else
 			local isSuccess, result
 			for _, service in next, Services do
-				local success, res = service.Verify(key)
+				local success, res = service.Get().Verify(key)
 				if success then
 					isSuccess, result = true, res
 					break

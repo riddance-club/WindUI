@@ -149,13 +149,6 @@ function Element:New(Config)
 					ImageColor3 = "SliderThumb",
 				},
 				Name = "Thumb",
-			}, {
-				Creator.NewRoundFrame(999, "SquircleGlass", {
-					Size = UDim2.new(1, 0, 1, 0),
-					ImageColor3 = Color3.new(1, 1, 1),
-					Name = "Highlight",
-					ImageTransparency = 0.5,
-				}),
 			}),
 		}),
 	})

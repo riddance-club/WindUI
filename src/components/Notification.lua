@@ -111,12 +111,13 @@ function NotificationModule.New(Config)
 		-- Icon.LayoutOrder = -1
 	end
 
+	local CloseIconData = Creator.Icon("x")
 	local CloseButton
 	if Notification.CanClose then
 		CloseButton = New("ImageButton", {
-			Image = Creator.Icon("x")[1],
-			ImageRectSize = Creator.Icon("x")[2].ImageRectSize,
-			ImageRectOffset = Creator.Icon("x")[2].ImageRectPosition,
+			Image = CloseIconData and CloseIconData[1],
+			ImageRectSize = CloseIconData and CloseIconData[2] and CloseIconData[2].ImageRectSize,
+			ImageRectOffset = CloseIconData and CloseIconData[2] and CloseIconData[2].ImageRectPosition,
 			BackgroundTransparency = 1,
 			Size = UDim2.new(0, 16, 0, 16),
 			Position = UDim2.new(1, -NotificationModule.UIPadding, 0, NotificationModule.UIPadding),
@@ -209,13 +210,6 @@ function NotificationModule.New(Config)
 		},
 		--ZIndex = 20
 	}, {
-		Creator.NewRoundFrame(NotificationModule.UICorner, "Squircle", {
-			Size = UDim2.new(1, 0, 1, 0),
-			ThemeTag = {
-				ImageColor3 = "Notification2",
-				ImageTransparency = "Notification2Transparency",
-			},
-		}),
 		New("Frame", {
 			Size = UDim2.new(1, 0, 1, 0),
 			BackgroundTransparency = 1,

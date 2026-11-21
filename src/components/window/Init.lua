@@ -38,7 +38,7 @@ return function(Config)
 		Resizable = Config.Resizable ~= false,
 		Background = Config.Background,
 		BackgroundImageTransparency = Config.BackgroundImageTransparency or 0,
-		ShadowTransparency = Config.ShadowTransparency or 0.6,
+		ShadowTransparency = Config.ShadowTransparency or 1,
 		User = Config.User or {},
 		Footer = Config.Footer or {},
 		Topbar = Config.Topbar or { Height = 52, ButtonsType = "Default" }, -- Default or Mac
@@ -168,6 +168,7 @@ return function(Config)
 			ImageTransparency = 1, -- .8; .35
 		}),
 	})
+	local FullScreenIconData = Creator.Icon("expand")
 	local FullScreenIcon = Creator.NewRoundFrame(Window.UICorner, "Squircle", {
 		Size = UDim2.new(1, 0, 1, 0),
 		ImageTransparency = 1, -- .65
@@ -177,9 +178,9 @@ return function(Config)
 	}, {
 		New("ImageLabel", {
 			Size = UDim2.new(0, 70, 0, 70),
-			Image = Creator.Icon("expand")[1],
-			ImageRectOffset = Creator.Icon("expand")[2].ImageRectPosition,
-			ImageRectSize = Creator.Icon("expand")[2].ImageRectSize,
+			Image = FullScreenIconData and FullScreenIconData[1],
+			ImageRectOffset = FullScreenIconData and FullScreenIconData[2] and FullScreenIconData[2].ImageRectPosition,
+			ImageRectSize = FullScreenIconData and FullScreenIconData[2] and FullScreenIconData[2].ImageRectSize,
 			BackgroundTransparency = 1,
 			Position = UDim2.new(0.5, 0, 0.5, 0),
 			AnchorPoint = Vector2.new(0.5, 0.5),
@@ -364,20 +365,6 @@ return function(Config)
 				},
 				ImageTransparency = 1, -- .85
 				Name = "Outline",
-			}, {
-				New("UIGradient", {
-					Rotation = 78,
-					Color = ColorSequence.new({
-						ColorSequenceKeypoint.new(0.0, Color3.fromRGB(255, 255, 255)),
-						ColorSequenceKeypoint.new(0.5, Color3.fromRGB(255, 255, 255)),
-						ColorSequenceKeypoint.new(1.0, Color3.fromRGB(255, 255, 255)),
-					}),
-					Transparency = NumberSequence.new({
-						NumberSequenceKeypoint.new(0.0, 0.1),
-						NumberSequenceKeypoint.new(0.5, 1),
-						NumberSequenceKeypoint.new(1.0, 0.1),
-					}),
-				}),
 			}),
 			Creator.NewRoundFrame(Window.UICorner - (Window.UIPadding / 2), "Squircle", {
 				Size = UDim2.new(1, 0, 1, 0),

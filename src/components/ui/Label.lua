@@ -7,11 +7,12 @@ local Tween = Creator.Tween
 function Label.New(Text, Icon, Parent, IsPlaceholder, Radius, RemoveGlass)
 	local Radius = Radius or 10
 	local IconLabelFrame
-	if Icon and Icon ~= "" then
+	local IconData = Creator.Icon(Icon)
+	if Icon and Icon ~= "" and IconData then
 		IconLabelFrame = New("ImageLabel", {
-			Image = Creator.Icon(Icon)[1],
-			ImageRectSize = Creator.Icon(Icon)[2].ImageRectSize,
-			ImageRectOffset = Creator.Icon(Icon)[2].ImageRectPosition,
+			Image = IconData[1],
+			ImageRectSize = IconData[2].ImageRectSize,
+			ImageRectOffset = IconData[2].ImageRectPosition,
 			Size = UDim2.new(0, 24 - 3, 0, 24 - 3),
 			BackgroundTransparency = 1,
 			ThemeTag = {
@@ -49,7 +50,7 @@ function Label.New(Text, Icon, Parent, IsPlaceholder, Radius, RemoveGlass)
 				Size = UDim2.new(1, 0, 1, 0),
 				ImageTransparency = 0.85,
 			}),
-			not RemoveGlass and Creator.NewRoundFrame(Radius, "SquircleGlass", {
+			not RemoveGlass and Creator.NewRoundFrame(Radius, "Squircle", {
 				ThemeTag = {
 					ImageColor3 = "Outline",
 				},
