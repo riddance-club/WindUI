@@ -152,40 +152,16 @@ return function(Config)
 	end
 
 	local Title = CreateText(Element.Title, "Title")
-	local Desc
-	if Element.Desc and Element.Desc ~= "" then
-		Desc = CreateText(Element.Desc, "Desc")
+	local Desc = CreateText(Element.Desc, "Desc")
+	if not Element.Title or Element.Title == "" then
+		Desc.Visible = false
 	end
-	if Desc and (not Element.Title or Element.Title == "") then
+	if not Element.Desc or Element.Desc == "" then
 		Desc.Visible = false
 	end
 
 	Element.UIElements.Title = Title
 	Element.UIElements.Desc = Desc
-
-	local TitleContent
-	local function BindDesc()
-		if not Desc or not Config.ElementTable then
-			return
-		end
-		Creator.AddSignal(Desc:GetPropertyChangedSignal("Text"), function()
-			if Element.Desc ~= Desc.Text then
-				Element:SetDesc(Desc.Text)
-				Config.ElementTable.Desc = Desc.Text
-			end
-		end)
-	end
-
-	local function EnsureDesc()
-		if Desc then
-			return Desc
-		end
-		Desc = CreateText("", "Desc")
-		Desc.Parent = TitleContent
-		Element.UIElements.Desc = Desc
-		BindDesc()
-		return Desc
-	end
 
 	Element.UIElements.Container = New("Frame", {
 		Size = UDim2.new(1, 0, 1, 0),
@@ -218,90 +194,239 @@ return function(Config)
 				HorizontalAlignment = Element.Justify ~= "Between" and Element.Justify or "Center",
 			}),
 			ImageFrame,
-			TitleContent,
-		}),
-	})
-
-	TitleContent = New("Frame", {
-		BackgroundTransparency = 1,
-		AutomaticSize = Element.Justify == "Between" and "Y" or "XY",
-		Size = UDim2.new(
-			Element.Justify == "Between" and 1 or 0,
-			Element.Justify == "Between" and (ImageFrame and -IconOffset - Element.UIPadding or -IconOffset) or 0,
-			1,
-			0
-		),
-		Name = "TitleFrame",
-	}, {
-		New("UIPadding", {
-			PaddingTop = UDim.new(0, (Config.Window.NewElements and Element.UIPadding / 2 or 0) + AddPaddingY),
-			PaddingLeft = UDim.new(0, (Config.Window.NewElements and Element.UIPadding / 2 or 0) + AddPaddingX),
-			PaddingRight = UDim.new(0, (Config.Window.NewElements and Element.UIPadding / 2 or 0) + AddPaddingX),
-			PaddingBottom = UDim.new(0, (Config.Window.NewElements and Element.UIPadding / 2 or 0) + AddPaddingY),
-		}),
-		New("UIListLayout", {
-			Padding = UDim.new(0, 6),
-			FillDirection = "Vertical",
-			VerticalAlignment = "Center",
-			HorizontalAlignment = "Left",
-		}),
-		Title,
-		Desc,
-	})
-	TitleContent.Parent = Element.UIElements.Container.TitleFrame
-
-	local Tags = Config.Tags
-	if Tags and #Tags > 0 then
-		local TagsFrame = New("ScrollingFrame", {
-			Size = UDim2.new(1, 0, 0, 0),
-			AutomaticSize = "Y",
-			LayoutOrder = -99,
-			BackgroundTransparency = 1,
-			ScrollingDirection = "X",
-			CanvasSize = UDim2.new(0, 0, 0, 0),
-			ScrollBarThickness = 0,
-		}, {
-			New("UIListLayout", {
-				FillDirection = "Horizontal",
-				VerticalAlignment = "Center",
-				HorizontalAlignment = "Left",
-				Padding = UDim.new(0, Config.Window.UIPadding / 2),
+			New("Frame", {
+				BackgroundTransparency = 1,
+				AutomaticSize = Element.Justify == "Between" and "Y" or "XY",
+				Size = UDim2.new(
+					Element.Justify == "Between" and 1 or 0,
+					Element.Justify == "Between" and (ImageFrame and -IconOffset - Element.UIPadding or -IconOffset)
+						or 0,
+					1,
+					0
+				),
+				Name = "TitleFrame",
+			}, {
+				New("UIPadding", {
+					PaddingTop = UDim.new(0, (Config.Window.NewElements and Element.UIPadding / 2 or 0) + AddPaddingY),
+					PaddingLeft = UDim.new(0, (Config.Window.NewElements and Element.UIPadding / 2 or 0) + AddPaddingX),
+					PaddingRight = UDim.new(
+						0,
+						(Config.Window.NewElements and Element.UIPadding / 2 or 0) + AddPaddingX
+					),
+					PaddingBottom = UDim.new(
+						0,
+						(Config.Window.NewElements and Element.UIPadding / 2 or 0) + AddPaddingY
+					),
+				}),
+				New("UIListLayout", {
+					Padding = UDim.new(0, 6),
+					FillDirection = "Vertical",
+					VerticalAlignment = "Center",
+					HorizontalAlignment = "Left",
+				}),
+				New("ScrollingFrame", {
+					Size = UDim2.new(1, 0, 0, 0),
+					AutomaticSize = "Y",
+					LayoutOrder = -99,
+					BackgroundTransparency = 1,
+					ScrollingDirection = "X",
+					CanvasSize = UDim2.new(0, 0, 0, 0),
+					ScrollBarThickness = 0,
+					Visible = false,
+				}, {
+					New("UIListLayout", {
+						FillDirection = "Horizontal",
+						VerticalAlignment = "Center",
+						HorizontalAlignment = "Left",
+						Padding = UDim.new(0, Config.Window.UIPadding / 2),
+					}),
+				}),
+				New("Frame", {
+					Name = "Space",
+					Size = UDim2.new(1, 0, 0, 0),
+					BackgroundTransparency = 1,
+					Visible = false,
+				}),
+				Title,
+				Desc,
 			}),
-		})
-		TagsFrame.Parent = TitleContent
+		}),
+	})
 
-		New("Frame", {
-			Name = "Space",
-			Size = UDim2.new(1, 0, 0, 0),
-			BackgroundTransparency = 1,
-			LayoutOrder = -98,
-			Parent = TitleContent,
-		})
-
-		for _, TagConfig in next, Tags do
-			TagModule:New(TagConfig, TagsFrame)
+	for _, TagConfig in next, Config.Tags or {} do
+		if not Element.UIElements.Container.TitleFrame.TitleFrame.ScrollingFrame.Visible then
+			Element.UIElements.Container.TitleFrame.TitleFrame.ScrollingFrame.Visible = true
+			Element.UIElements.Container.TitleFrame.TitleFrame.Space.Visible = true
 		end
+		local Tag = TagModule:New(TagConfig, Element.UIElements.Container.TitleFrame.TitleFrame.ScrollingFrame)
+	end
 
-		Creator.AddSignal(TagsFrame.UIListLayout:GetPropertyChangedSignal("AbsoluteContentSize"), function()
-			TagsFrame.Size = UDim2.new(
+	Creator.AddSignal(
+		Element.UIElements.Container.TitleFrame.TitleFrame.ScrollingFrame.UIListLayout:GetPropertyChangedSignal(
+			"AbsoluteContentSize"
+		),
+		function()
+			Element.UIElements.Container.TitleFrame.TitleFrame.ScrollingFrame.Size = UDim2.new(
 				1,
 				0,
 				0,
-				TagsFrame.UIListLayout.AbsoluteContentSize.Y / Config.ParentConfig.UIScale
+				Element.UIElements.Container.TitleFrame.TitleFrame.ScrollingFrame.UIListLayout.AbsoluteContentSize.Y
+					/ Config.ParentConfig.UIScale
 			)
-		end)
-	end
-
-	BindDesc()
+		end
+	)
 
 	-- print(Config.Tab.Elements)
 	-- print(Config.Index)
 	-- print("Squircle")
 
+	local LockedIcon = Creator.Image("lock", "lock", 0, Config.Window.Folder, "Lock", false)
+	LockedIcon.Size = UDim2.new(0, 20, 0, 20)
+	LockedIcon.ImageLabel.ImageColor3 = Color3.new(1, 1, 1)
+	LockedIcon.ImageLabel.ImageTransparency = 0.4
+
+	local LockedTitle = New("TextLabel", {
+		Text = "Locked",
+		TextSize = 18,
+		FontFace = Font.new(Creator.Font, Enum.FontWeight.Medium),
+		AutomaticSize = "XY",
+		BackgroundTransparency = 1,
+		TextColor3 = Color3.new(1, 1, 1),
+		TextTransparency = 0.05,
+	})
+
+	local ElementFullFrame = New("Frame", {
+		Size = UDim2.new(1, Element.UIPadding * 2, 1, Element.UIPadding * 2),
+		BackgroundTransparency = 1,
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.new(0.5, 0, 0.5, 0),
+		ZIndex = 9999999,
+	})
+
+	local Locked, LockedTable = NewRoundFrame(Element.UICorner, "Squircle", {
+		Size = UDim2.new(1, 0, 1, 0),
+		ImageTransparency = 0.25,
+		ImageColor3 = Color3.new(0, 0, 0),
+		Visible = false,
+		Active = false,
+		Parent = ElementFullFrame,
+	}, {
+		New("UIListLayout", {
+			FillDirection = "Horizontal",
+			VerticalAlignment = "Center",
+			HorizontalAlignment = "Center",
+			Padding = UDim.new(0, 8),
+		}),
+		LockedIcon,
+		LockedTitle,
+	}, nil, true)
+
+	local HighlightOutline, HighlightOutlineTable = NewRoundFrame(Element.UICorner, "Squircle-Outline", {
+		Size = UDim2.new(1, 0, 1, 0),
+		ImageTransparency = 1, -- 0.25
+		Active = false,
+		ThemeTag = {
+			ImageColor3 = "Text",
+		},
+		Parent = ElementFullFrame,
+	}, {
+		New("UIListLayout", {
+			FillDirection = "Horizontal",
+			VerticalAlignment = "Center",
+			HorizontalAlignment = "Center",
+			Padding = UDim.new(0, 8),
+		}),
+	}, nil, true)
+
+	local Highlight, HighlightTable = NewRoundFrame(Element.UICorner, "Squircle", {
+		Size = UDim2.new(1, 0, 1, 0),
+		ImageTransparency = 1, -- 0.88
+		Active = false,
+		ThemeTag = {
+			ImageColor3 = "Text",
+		},
+		Parent = ElementFullFrame,
+	}, {
+		New("UIListLayout", {
+			FillDirection = "Horizontal",
+			VerticalAlignment = "Center",
+			HorizontalAlignment = "Center",
+			Padding = UDim.new(0, 8),
+		}),
+	}, nil, true)
+
+	local HoverOutline, HoverOutlineTable = NewRoundFrame(Element.UICorner, "Squircle-Outline", {
+		Size = UDim2.new(1, 0, 1, 0),
+		ImageTransparency = 1, -- 0.25
+		Visible = false,
+		Active = false,
+		ThemeTag = {
+			ImageColor3 = "Text",
+		},
+		Parent = ElementFullFrame,
+	}, {
+		New("UIListLayout", {
+			FillDirection = "Horizontal",
+			VerticalAlignment = "Center",
+			HorizontalAlignment = "Center",
+			Padding = UDim.new(0, 8),
+		}),
+		New("UIGradient", {
+			Name = "HoverGradient",
+			Color = ColorSequence.new({
+				ColorSequenceKeypoint.new(0, Color3.new(1, 1, 1)),
+				ColorSequenceKeypoint.new(0.5, Color3.new(1, 1, 1)),
+				ColorSequenceKeypoint.new(1, Color3.new(1, 1, 1)),
+			}),
+			Transparency = NumberSequence.new({
+				NumberSequenceKeypoint.new(0, 1),
+				NumberSequenceKeypoint.new(0.25, 0.9),
+				NumberSequenceKeypoint.new(0.5, 0.3),
+				NumberSequenceKeypoint.new(0.75, 0.9),
+				NumberSequenceKeypoint.new(1, 1),
+			}),
+		}),
+	}, nil, true)
+
+	local Hover, HoverTable = NewRoundFrame(Element.UICorner, "Squircle", {
+		Size = UDim2.new(1, 0, 1, 0),
+		ImageTransparency = 1, -- 0.88
+		Active = false,
+		ThemeTag = {
+			ImageColor3 = "Text",
+		},
+		Parent = ElementFullFrame,
+	}, {
+		New("UIGradient", {
+			Name = "HoverGradient",
+			Color = ColorSequence.new({
+				ColorSequenceKeypoint.new(0, Color3.new(1, 1, 1)),
+				ColorSequenceKeypoint.new(0.5, Color3.new(1, 1, 1)),
+				ColorSequenceKeypoint.new(1, Color3.new(1, 1, 1)),
+			}),
+			Transparency = NumberSequence.new({
+				NumberSequenceKeypoint.new(0, 1),
+				NumberSequenceKeypoint.new(0.25, 0.9),
+				NumberSequenceKeypoint.new(0.5, 0.3),
+				NumberSequenceKeypoint.new(0.75, 0.9),
+				NumberSequenceKeypoint.new(1, 1),
+			}),
+		}),
+		New("UIListLayout", {
+			FillDirection = "Horizontal",
+			VerticalAlignment = "Center",
+			HorizontalAlignment = "Center",
+			Padding = UDim.new(0, 8),
+		}),
+	}, nil, true)
+
 	local Main, MainTable = NewRoundFrame(Element.UICorner, "Squircle", {
 		Size = UDim2.new(1, 0, 0, 0),
 		AutomaticSize = "Y",
 		ImageTransparency = Element.Color and 0.05 or (not Config.Window.NewElements and 0.93 or nil),
+		--Text = "",
+		--TextTransparency = 1,
+		--AutoButtonColor = false,
 		Parent = Config.Parent,
 		ThemeTag = {
 			ImageColor3 = not Element.Color and (Config.Window.NewElements and "ElementBackground" or "Text") or nil,
@@ -314,6 +439,7 @@ return function(Config)
 		) or typeof(Element.Color) == "Color3" and Element.Color) or nil,
 	}, {
 		Element.UIElements.Container,
+		ElementFullFrame,
 		New("UIPadding", {
 			PaddingTop = UDim.new(0, Element.UIPadding),
 			PaddingLeft = UDim.new(0, Element.UIPadding),
@@ -323,104 +449,29 @@ return function(Config)
 	}, true, true)
 
 	Element.UIElements.Main = Main
+	Element.UIElements.Locked = Locked
 
-	-- Flat hover: one squircle overlay that fades in. The old implementation
-	-- built two extra shape layers with animated gradient sweeps for every row.
-	local Hover, HoverTable
 	if Element.Hover then
-		Hover, HoverTable = NewRoundFrame(Element.UICorner, MainTable:GetType(), {
-			Size = UDim2.new(1, Element.UIPadding * 2, 1, Element.UIPadding * 2),
-			Position = UDim2.new(0.5, 0, 0.5, 0),
-			AnchorPoint = Vector2.new(0.5, 0.5),
-			ImageTransparency = 1,
-			Active = false,
-			ZIndex = 3,
-			ThemeTag = {
-				ImageColor3 = "Text",
-			},
-			Parent = Main,
-		}, nil, true)
-
 		Creator.AddSignal(Main.MouseEnter, function()
 			if CanHover then
-				Tween(Hover, 0.12, { ImageTransparency = 0.95 }):Play()
+				--Tween(Main, 0.12, { ImageTransparency = Element.Color and 0.15 or 0.9 }):Play()
+				Tween(Hover, 0.12, { ImageTransparency = 0.9 }):Play()
+				Tween(HoverOutline, 0.12, { ImageTransparency = 0.8 }):Play()
+				Creator.AddSignal(Main.MouseMoved, function(x, y)
+					Hover.HoverGradient.Offset =
+						Vector2.new(((x - Main.AbsolutePosition.X) / Main.AbsoluteSize.X) - 0.5, 0)
+					HoverOutline.HoverGradient.Offset =
+						Vector2.new(((x - Main.AbsolutePosition.X) / Main.AbsoluteSize.X) - 0.5, 0)
+				end)
 			end
 		end)
 		Creator.AddSignal(Main.InputEnded, function()
 			if CanHover then
+				--Tween(Main, 0.12, { ImageTransparency = Element.Color and 0.05 or 0.93 }):Play()
 				Tween(Hover, 0.12, { ImageTransparency = 1 }):Play()
+				Tween(HoverOutline, 0.12, { ImageTransparency = 1 }):Play()
 			end
 		end)
-	end
-
-	-- Lock and highlight layers are only built when they are actually used
-	-- (most elements are never locked or scrolled to).
-	local Locked, LockedTable, LockedTitle
-	local function EnsureLocked()
-		if Locked then
-			return Locked
-		end
-
-		local LockedIcon = Creator.Image("lock", "lock", 0, Config.Window.Folder, "Lock", false)
-		LockedIcon.Size = UDim2.new(0, 20, 0, 20)
-		LockedIcon.ImageLabel.ImageColor3 = Color3.new(1, 1, 1)
-		LockedIcon.ImageLabel.ImageTransparency = 0.4
-
-		LockedTitle = New("TextLabel", {
-			Text = "Locked",
-			TextSize = 18,
-			FontFace = Font.new(Creator.Font, Enum.FontWeight.Medium),
-			AutomaticSize = "XY",
-			BackgroundTransparency = 1,
-			TextColor3 = Color3.new(1, 1, 1),
-			TextTransparency = 0.05,
-		})
-
-		Locked, LockedTable = NewRoundFrame(Element.UICorner, MainTable:GetType(), {
-			Size = UDim2.new(1, Element.UIPadding * 2, 1, Element.UIPadding * 2),
-			Position = UDim2.new(0.5, 0, 0.5, 0),
-			AnchorPoint = Vector2.new(0.5, 0.5),
-			ImageTransparency = 0.25,
-			ImageColor3 = Color3.new(0, 0, 0),
-			Visible = false,
-			Active = false,
-			ZIndex = 9999999,
-			Parent = Main,
-		}, {
-			New("UIListLayout", {
-				FillDirection = "Horizontal",
-				VerticalAlignment = "Center",
-				HorizontalAlignment = "Center",
-				Padding = UDim.new(0, 8),
-			}),
-			LockedIcon,
-			LockedTitle,
-		}, nil, true)
-
-		Element.UIElements.Locked = Locked
-		return Locked
-	end
-
-	local Highlight, HighlightTable
-	local function EnsureHighlight()
-		if Highlight then
-			return Highlight
-		end
-
-		Highlight, HighlightTable = NewRoundFrame(Element.UICorner, MainTable:GetType(), {
-			Size = UDim2.new(1, Element.UIPadding * 2, 1, Element.UIPadding * 2),
-			Position = UDim2.new(0.5, 0, 0.5, 0),
-			AnchorPoint = Vector2.new(0.5, 0.5),
-			ImageTransparency = 1,
-			Active = false,
-			ZIndex = 4,
-			ThemeTag = {
-				ImageColor3 = "Text",
-			},
-			Parent = Main,
-		}, nil, true)
-
-		return Highlight
 	end
 
 	function Element:SetTitle(text)
@@ -430,16 +481,12 @@ return function(Config)
 
 	function Element:SetDesc(text)
 		Element.Desc = text
+		Desc.Text = text or ""
 		if not text then
-			if Desc then
-				Desc.Visible = false
-			end
-			return
+			Desc.Visible = false
+		elseif not Desc.Visible then
+			Desc.Visible = true
 		end
-
-		local Label = EnsureDesc()
-		Label.Text = text
-		Label.Visible = true
 	end
 
 	function Element:Colorize(obj, prop)
@@ -458,7 +505,12 @@ return function(Config)
 				Config.ElementTable.Title = Title.Text
 			end
 		end)
-		BindDesc()
+		Creator.AddSignal(Desc:GetPropertyChangedSignal("Text"), function()
+			if Element.Desc ~= Desc.Text then
+				Element:SetDesc(Desc.Text)
+				Config.ElementTable.Desc = Desc.Text
+			end
+		end)
 	end
 
 	-- function Element:Show()
@@ -570,24 +622,72 @@ return function(Config)
 
 	function Element:Lock(newtitle)
 		CanHover = false
-		local Overlay = EnsureLocked()
-		Overlay.Active = true
-		Overlay.Visible = true
+		Locked.Active = true
+		Locked.Visible = true
 		LockedTitle.Text = newtitle or "Locked"
 	end
 
 	function Element:Unlock()
 		CanHover = true
-		if Locked then
-			Locked.Active = false
-			Locked.Visible = false
-		end
+		Locked.Active = false
+		Locked.Visible = false
 	end
 
 	function Element:Highlight()
-		local Overlay = EnsureHighlight()
-		Overlay.ImageTransparency = 0.8
-		Tween(Overlay, 0.45, { ImageTransparency = 1 }):Play()
+		local OutlineGradient = New("UIGradient", {
+			Color = ColorSequence.new({
+				ColorSequenceKeypoint.new(0, Color3.new(1, 1, 1)),
+				ColorSequenceKeypoint.new(0.5, Color3.new(1, 1, 1)),
+				ColorSequenceKeypoint.new(1, Color3.new(1, 1, 1)),
+			}),
+			Transparency = NumberSequence.new({
+				NumberSequenceKeypoint.new(0, 1),
+				NumberSequenceKeypoint.new(0.1, 0.9),
+				NumberSequenceKeypoint.new(0.5, 0.3),
+				NumberSequenceKeypoint.new(0.9, 0.9),
+				NumberSequenceKeypoint.new(1, 1),
+			}),
+			Rotation = 0,
+			Offset = Vector2.new(-1, 0),
+			Parent = HighlightOutline,
+		})
+
+		local HighlightGradient = New("UIGradient", {
+			Color = ColorSequence.new({
+				ColorSequenceKeypoint.new(0, Color3.new(1, 1, 1)),
+				ColorSequenceKeypoint.new(0.5, Color3.new(1, 1, 1)),
+				ColorSequenceKeypoint.new(1, Color3.new(1, 1, 1)),
+			}),
+			Transparency = NumberSequence.new({
+				NumberSequenceKeypoint.new(0, 1),
+				NumberSequenceKeypoint.new(0.15, 0.8),
+				NumberSequenceKeypoint.new(0.5, 0.1),
+				NumberSequenceKeypoint.new(0.85, 0.8),
+				NumberSequenceKeypoint.new(1, 1),
+			}),
+			Rotation = 0,
+			Offset = Vector2.new(-1, 0),
+			Parent = Highlight,
+		})
+
+		HighlightOutline.ImageTransparency = 0.65
+		Highlight.ImageTransparency = 0.88
+
+		Tween(OutlineGradient, 0.75, {
+			Offset = Vector2.new(1, 0),
+		}):Play()
+
+		Tween(HighlightGradient, 0.75, {
+			Offset = Vector2.new(1, 0),
+		}):Play()
+
+		task.spawn(function()
+			task.wait(0.75)
+			HighlightOutline.ImageTransparency = 1
+			Highlight.ImageTransparency = 1
+			OutlineGradient:Destroy()
+			HighlightGradient:Destroy()
+		end)
 	end
 
 	function Element.UpdateShape(Tab)
@@ -600,15 +700,11 @@ return function(Config)
 
 			if newShape and Main then
 				MainTable:SetType(newShape)
-				if HoverTable then
-					HoverTable:SetType(newShape)
-				end
-				if LockedTable then
-					LockedTable:SetType(newShape)
-				end
-				if HighlightTable then
-					HighlightTable:SetType(newShape)
-				end
+				LockedTable:SetType(newShape)
+				HighlightTable:SetType(newShape)
+				--HighlightOutlineTable:SetType(newShape .. "-Outline")
+				HoverTable:SetType(newShape)
+				--HoverOutlineTable:SetType(newShape .. "-Outline")
 			end
 		end
 	end

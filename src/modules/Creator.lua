@@ -26,9 +26,9 @@ Creator = {
 	Theme = nil,
 	Themes = nil,
 	Icons = Icons,
-	-- Connections and font users are weak-keyed so destroyed UI does not
-	-- keep them alive forever.
-	Signals = setmetatable({}, { __mode = "k" }),
+	-- Stock keeps connections strongly referenced; weak keys risk executors
+	-- collecting the connection wrapper and silently dropping callbacks.
+	Signals = {},
 	-- Weak keys so destroyed UI (tooltips, tags, dropdown rows, ...) can be
 	-- collected instead of accumulating for the lifetime of the script.
 	Objects = setmetatable({}, { __mode = "k" }),
@@ -140,16 +140,17 @@ end
 
 function Creator.AddSignal(Signal, Function)
 	local conn = Signal:Connect(Function)
-	Creator.Signals[conn] = true
+	table.insert(Creator.Signals, conn)
 	return conn
 end
 
 function Creator.DisconnectAll()
 	local Signals = Creator.Signals
-	for Connection in next, Signals do
+	for Index = #Signals, 1, -1 do
+		local Connection = Signals[Index]
+		Signals[Index] = nil
 		Connection:Disconnect()
 	end
-	table.clear(Signals)
 end
 
 function Creator.SafeCallback(Function, ...)
