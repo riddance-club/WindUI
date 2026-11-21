@@ -3,7 +3,7 @@ local cloneref = (cloneref or clonereference or function(instance)
 end)
 
 local UserInputService = cloneref(game:GetService("UserInputService"))
-local Mouse = cloneref(game:GetService("Players").LocalPlayer:GetMouse())
+local Mouse = cloneref(game:GetService("Players")).LocalPlayer:GetMouse()
 local Camera = cloneref(game:GetService("Workspace")).CurrentCamera
 
 local Creator = require("../modules/Creator")
@@ -61,7 +61,7 @@ function Element:New(Config)
 		Desc = Dropdown.Desc,
 		Parent = Config.Parent,
 		TextOffset = Dropdown.Callback and Dropdown.Width or 20,
-		Hover = false,
+		Hover = not Dropdown.Callback and true or false,
 		Tab = Config.Tab,
 		Index = Config.Index,
 		Window = Config.Window,
@@ -69,10 +69,6 @@ function Element:New(Config)
 		ParentConfig = Config,
 		Tags = Config.Tags,
 	})
-
-	-- Make the whole row clickable so opening never depends on hitting the
-	-- small trigger label.
-	Dropdown.DropdownFrame.UIElements.Main.Active = true
 
 	if Dropdown.Callback then
 		Dropdown.UIElements.Dropdown =
@@ -82,7 +78,6 @@ function Element:New(Config)
 		Dropdown.UIElements.Dropdown.Frame.Frame.TextLabel.Size =
 			UDim2.new(1, Dropdown.UIElements.Dropdown.Frame.Frame.TextLabel.Size.X.Offset - 18 - 12 - 12, 0, 0)
 
-		Dropdown.UIElements.Dropdown.ZIndex = 10
 		Dropdown.UIElements.Dropdown.Size = UDim2.new(0, Dropdown.Width, 0, 36)
 		Dropdown.UIElements.Dropdown.Position = UDim2.new(1, 0, Config.Window.NewElements and 0 or 0.5, 0)
 		Dropdown.UIElements.Dropdown.AnchorPoint = Vector2.new(1, Config.Window.NewElements and 0 or 0.5)
@@ -102,7 +97,6 @@ function Element:New(Config)
 	Dropdown.Close = Dropdown.DropdownMenu.Close
 
 	local DropdownIconData = Creator.Icon("chevrons-up-down")
-
 	local DropdownIcon = New("ImageLabel", {
 		Image = DropdownIconData and DropdownIconData[1],
 		ImageRectOffset = DropdownIconData and DropdownIconData[2] and DropdownIconData[2].ImageRectPosition,

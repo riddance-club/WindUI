@@ -5,7 +5,7 @@ local cloneref = (cloneref or clonereference or function(instance)
 end)
 
 local UserInputService = cloneref(game:GetService("UserInputService"))
-local Mouse = cloneref(game:GetService("Players").LocalPlayer:GetMouse())
+local Mouse = cloneref(game:GetService("Players")).LocalPlayer:GetMouse()
 local Camera = cloneref(game:GetService("Workspace")).CurrentCamera
 
 local CurrentCamera = workspace.CurrentCamera
@@ -31,7 +31,6 @@ function DropdownMenu.New(Config, Dropdown, Element, Type)
 		HorizontalAlignment = "Center",
 	})
 
-	-- Values may be a table or a function provider (e.g. ConfigStore.List).
 	local function ResolveValues(Values)
 		if type(Values) == "function" then
 			local Success, Result = pcall(Values)
@@ -44,7 +43,6 @@ function DropdownMenu.New(Config, Dropdown, Element, Type)
 		return Values
 	end
 
-	-- Values can be strings, instances, or tables using common naming fields.
 	local function GetValueLabel(Value)
 		if typeof(Value) == "table" then
 			return Value.Title or Value.Name or Value.Text or Value.Label or Value[1]
@@ -61,16 +59,6 @@ function DropdownMenu.New(Config, Dropdown, Element, Type)
 		AnchorPoint = Vector2.new(1, 0),
 		Position = UDim2.new(1, 0, 0, 0),
 	}, {
-		-- Flat outline so the menu reads as a surface even when its background
-		-- closely matches the window (1.6.57-style dark palette).
-		Creator.NewRoundFrame(Element.MenuCorner, "SquircleOutline", {
-			Size = UDim2.new(1, 0, 1, 0),
-			ThemeTag = {
-				ImageColor3 = "Outline",
-			},
-			ImageTransparency = 0.88,
-			Name = "Border",
-		}),
 		New("UIPadding", {
 			PaddingTop = UDim.new(0, Element.MenuPadding),
 			PaddingLeft = UDim.new(0, Element.MenuPadding),
@@ -130,30 +118,18 @@ function DropdownMenu.New(Config, Dropdown, Element, Type)
 
 	local function RecalculateListSize()
 		local MaxHeight = Config.WindUI.DropdownGui.AbsoluteSize.Y
-		if MaxHeight <= 0 then
-			MaxHeight = 400
-		end
 
 		local ContentY = Dropdown.UIElements.UIListLayout.AbsoluteContentSize.Y / Config.UIScale
-		if ContentY <= 0 then
-			-- Layout has not run yet; use a row-count estimate (or a minimum
-			-- for the empty-state row) until the layout signal gives us the
-			-- real height.
-			ContentY = math.max(#Dropdown.Tabs * 44, 40)
-		end
 		local SearchBarOffset = Dropdown.SearchBarEnabled and (Element.SearchBarHeight + (Element.MenuPadding * 3))
 			or (Element.MenuPadding * 2)
 		local TotalY = ContentY + SearchBarOffset
 
-		local CanvasWidth = Dropdown.UIElements.MenuCanvas.AbsoluteSize.X
-		if CanvasWidth <= 0 then
-			CanvasWidth = Dropdown.UIElements.MenuCanvas.Size.X.Offset
-		end
-
 		if TotalY > MaxHeight then
-			Dropdown.UIElements.MenuCanvas.Size = UDim2.fromOffset(CanvasWidth, MaxHeight)
+			Dropdown.UIElements.MenuCanvas.Size =
+				UDim2.fromOffset(Dropdown.UIElements.MenuCanvas.AbsoluteSize.X, MaxHeight)
 		else
-			Dropdown.UIElements.MenuCanvas.Size = UDim2.fromOffset(CanvasWidth, TotalY)
+			Dropdown.UIElements.MenuCanvas.Size =
+				UDim2.fromOffset(Dropdown.UIElements.MenuCanvas.AbsoluteSize.X, TotalY)
 		end
 	end
 
@@ -167,8 +143,6 @@ function DropdownMenu.New(Config, Dropdown, Element, Type)
 			recalcPending = false
 			RecalculateListSize()
 			RecalculateCanvasSize()
-
-			-- The menu height changed; re-run the flip/offset logic.
 			if Dropdown.UIElements.MenuCanvas.Visible then
 				UpdatePosition()
 			end
@@ -179,8 +153,7 @@ function DropdownMenu.New(Config, Dropdown, Element, Type)
 		local button = Dropdown.UIElements.Dropdown or Dropdown.DropdownFrame.UIElements.Main
 		local menu = Dropdown.UIElements.MenuCanvas
 
-		local ActiveCamera = workspace.CurrentCamera or Camera
-		local availableSpaceBelow = ActiveCamera.ViewportSize.Y
+		local availableSpaceBelow = Camera.ViewportSize.Y
 			- (button.AbsolutePosition.Y + button.AbsoluteSize.Y)
 			- Element.MenuPadding
 			- 54
@@ -202,10 +175,10 @@ function DropdownMenu.New(Config, Dropdown, Element, Type)
 	local SearchLabel
 
 	function DropdownModule:Display()
+		local Values = ResolveValues(Dropdown.Values) or {}
 		local Str = ""
 
 		if Dropdown.Multi then
-			local Values = ResolveValues(Dropdown.Values)
 			local selected = {}
 			if typeof(Dropdown.Value) == "table" then
 				for _, item in ipairs(Dropdown.Value) do
@@ -275,7 +248,7 @@ function DropdownMenu.New(Config, Dropdown, Element, Type)
 
 				if isLocked then
 					Tween(tab.UIElements.TabItem, 0.1, { ImageTransparency = 1 }):Play()
-					Tween(tab.UIElements.TabItem.Highlight, 0.1, { ImageTransparency = 1 }):Play()
+					--Tween(tab.UIElements.TabItem.Highlight, 0.1, { ImageTransparency = 1 }):Play()
 					Tween(tab.UIElements.TabItem.Frame.Title.TextLabel, 0.1, { TextTransparency = 0.6 }):Play()
 					if tab.UIElements.TabIcon then
 						Tween(tab.UIElements.TabIcon.ImageLabel, 0.1, { ImageTransparency = 0.6 }):Play()
@@ -286,14 +259,14 @@ function DropdownMenu.New(Config, Dropdown, Element, Type)
 				else
 					if tab.Selected then
 						Tween(tab.UIElements.TabItem, 0.1, { ImageTransparency = TabBackgroundTransparency }):Play()
-						Tween(tab.UIElements.TabItem.Highlight, 0.1, { ImageTransparency = 0.75 }):Play()
+						--Tween(tab.UIElements.TabItem.Highlight, 0.1, { ImageTransparency = 0.75 }):Play()
 						Tween(tab.UIElements.TabItem.Frame.Title.TextLabel, 0.1, { TextTransparency = 0 }):Play()
 						if tab.UIElements.TabIcon then
 							Tween(tab.UIElements.TabIcon.ImageLabel, 0.1, { ImageTransparency = 0 }):Play()
 						end
 					else
 						Tween(tab.UIElements.TabItem, 0.1, { ImageTransparency = 1 }):Play()
-						Tween(tab.UIElements.TabItem.Highlight, 0.1, { ImageTransparency = 1 }):Play()
+						--Tween(tab.UIElements.TabItem.Highlight, 0.1, { ImageTransparency = 1 }):Play()
 						Tween(
 							tab.UIElements.TabItem.Frame.Title.TextLabel,
 							0.1,
@@ -320,20 +293,11 @@ function DropdownMenu.New(Config, Dropdown, Element, Type)
 			return
 		end
 
-		-- Support Refresh() (use current values), function providers, and guard
-		-- against a non-table slipping in through a mis-called method.
-		local Source = Values or Dropdown.Values
-		Values = ResolveValues(Source)
+		Values = ResolveValues(Values or Dropdown.Values)
 		if type(Values) ~= "table" then
 			warn("[ WindUI.Dropdown ] Refresh expects a table of values")
 			return
 		end
-
-		if type(Source) ~= "function" then
-			Dropdown.Values = Values
-		end
-		builtValues = Values
-		builtCount = #Values
 
 		for _, Elementt in next, Dropdown.UIElements.Menu.Frame.ScrollingFrame:GetChildren() do
 			if not Elementt:IsA("UIListLayout") then
@@ -342,18 +306,19 @@ function DropdownMenu.New(Config, Dropdown, Element, Type)
 		end
 
 		Dropdown.Tabs = {}
-		local RowCount = 0
 
 		if Dropdown.SearchBarEnabled then
 			if not SearchLabel then
 				SearchLabel = CreateInput("Search...", "search", Dropdown.UIElements.Menu, nil, function(val)
-					local Query = string.lower(val)
 					for _, tab in next, Dropdown.Tabs do
-						tab.UIElements.TabItem.Visible =
-							string.find(string.lower(tostring(tab.Name)), Query, 1, true) ~= nil
+						if string.find(string.lower(tab.Name), string.lower(val), 1, true) then
+							tab.UIElements.TabItem.Visible = true
+						else
+							tab.UIElements.TabItem.Visible = false
+						end
+						RecalculateListSize()
+						RecalculateCanvasSize()
 					end
-					-- Defer so the layout has applied the new row visibility.
-					ScheduleRecalc()
 				end, true)
 				SearchLabel.Size = UDim2.new(1, 0, 0, Element.SearchBarHeight)
 				SearchLabel.Position = UDim2.new(0, 0, 0, 0)
@@ -362,16 +327,17 @@ function DropdownMenu.New(Config, Dropdown, Element, Type)
 		end
 
 		for Index, Tab in next, Values do
-			local TabIsTable = typeof(Tab) == "table"
-			if not TabIsTable or Tab.Type ~= "Divider" then
+			if Tab.Type ~= "Divider" then
 				local TabMain = {
-					Name = TabIsTable and (Tab.Title or Tab.Name or Tab.Text or Tab.Label or Tab[1]) or Tab,
-					Desc = TabIsTable and (Tab.Desc or Tab.Description or Tab.SubTitle) or nil,
-					Icon = TabIsTable and Tab.Icon or nil,
-					IconSize = TabIsTable and Tab.IconSize or nil,
+					Name = typeof(Tab) == "table"
+							and (Tab.Title or Tab.Name or Tab.Text or Tab.Label or Tab[1])
+						or Tab,
+					Desc = typeof(Tab) == "table" and (Tab.Desc or Tab.Description or Tab.SubTitle) or nil,
+					Icon = typeof(Tab) == "table" and Tab.Icon or nil,
+					IconSize = typeof(Tab) == "table" and Tab.IconSize or nil,
 					Original = Tab,
 					Selected = false,
-					Locked = TabIsTable and Tab.Locked or false,
+					Locked = typeof(Tab) == "table" and Tab.Locked or false,
 					UIElements = {},
 				}
 				local TabIcon
@@ -528,7 +494,7 @@ function DropdownMenu.New(Config, Dropdown, Element, Type)
 
 				if TabMain.Selected and not TabMain.Locked then
 					TabMain.UIElements.TabItem.ImageTransparency = TabBackgroundTransparency
-					TabMain.UIElements.TabItem.Highlight.ImageTransparency = 0.75
+					--TabMain.UIElements.TabItem.Highlight.ImageTransparency = 0.75
 					TabMain.UIElements.TabItem.Frame.Title.TextLabel.TextTransparency = 0
 					if TabMain.UIElements.TabIcon then
 						TabMain.UIElements.TabIcon.ImageLabel.ImageTransparency = 0
@@ -536,7 +502,8 @@ function DropdownMenu.New(Config, Dropdown, Element, Type)
 				end
 
 				Dropdown.Tabs[Index] = TabMain
-				RowCount = RowCount + 1
+
+				DropdownModule:Display()
 
 				if Type == "Dropdown" then
 					Creator.AddSignal(TabMain.UIElements.TabItem.MouseButton1Click, function()
@@ -552,7 +519,7 @@ function DropdownMenu.New(Config, Dropdown, Element, Type)
 									0.1,
 									{ ImageTransparency = TabBackgroundTransparency }
 								):Play()
-								Tween(TabMain.UIElements.TabItem.Highlight, 0.1, { ImageTransparency = 0.75 }):Play()
+								--Tween(TabMain.UIElements.TabItem.Highlight, 0.1, { ImageTransparency = 0.75 }):Play()
 								Tween(TabMain.UIElements.TabItem.Frame.Title.TextLabel, 0.1, { TextTransparency = 0 }):Play()
 								if TabMain.UIElements.TabIcon then
 									Tween(TabMain.UIElements.TabIcon.ImageLabel, 0.1, { ImageTransparency = 0 }):Play()
@@ -564,7 +531,7 @@ function DropdownMenu.New(Config, Dropdown, Element, Type)
 								end
 								TabMain.Selected = false
 								Tween(TabMain.UIElements.TabItem, 0.1, { ImageTransparency = 1 }):Play()
-								Tween(TabMain.UIElements.TabItem.Highlight, 0.1, { ImageTransparency = 1 }):Play()
+								--Tween(TabMain.UIElements.TabItem.Highlight, 0.1, { ImageTransparency = 1 }):Play()
 								Tween(TabMain.UIElements.TabItem.Frame.Title.TextLabel, 0.1, { TextTransparency = 0.4 }):Play()
 								if TabMain.UIElements.TabIcon then
 									Tween(TabMain.UIElements.TabIcon.ImageLabel, 0.1, { ImageTransparency = 0.2 }):Play()
@@ -580,7 +547,7 @@ function DropdownMenu.New(Config, Dropdown, Element, Type)
 						else
 							for Index, TabPisun in next, Dropdown.Tabs do
 								Tween(TabPisun.UIElements.TabItem, 0.1, { ImageTransparency = 1 }):Play()
-								Tween(TabPisun.UIElements.TabItem.Highlight, 0.1, { ImageTransparency = 1 }):Play()
+								--Tween(TabPisun.UIElements.TabItem.Highlight, 0.1, { ImageTransparency = 1 }):Play()
 								Tween(
 									TabPisun.UIElements.TabItem.Frame.Title.TextLabel,
 									0.1,
@@ -593,7 +560,7 @@ function DropdownMenu.New(Config, Dropdown, Element, Type)
 							end
 							TabMain.Selected = true
 							Tween(TabMain.UIElements.TabItem, 0.1, { ImageTransparency = TabBackgroundTransparency }):Play()
-							Tween(TabMain.UIElements.TabItem.Highlight, 0.1, { ImageTransparency = 0.75 }):Play()
+							--Tween(TabMain.UIElements.TabItem.Highlight, 0.1, { ImageTransparency = 0.75 }):Play()
 							Tween(TabMain.UIElements.TabItem.Frame.Title.TextLabel, 0.1, { TextTransparency = 0 }):Play()
 							if TabMain.UIElements.TabIcon then
 								Tween(TabMain.UIElements.TabIcon.ImageLabel, 0.1, { ImageTransparency = 0 }):Play()
@@ -601,9 +568,6 @@ function DropdownMenu.New(Config, Dropdown, Element, Type)
 							Dropdown.Value = TabMain.Original
 						end
 						Callback()
-						if not Dropdown.Multi then
-							DropdownModule:Close()
-						end
 					end)
 				elseif Type == "Menu" then
 					if not TabMain.Locked then
@@ -619,32 +583,13 @@ function DropdownMenu.New(Config, Dropdown, Element, Type)
 							return
 						end
 						Callback(Tab.Callback or function() end)
-						DropdownModule:Close()
 					end)
 				end
+
 			else
 				require("../../elements/Divider"):New({ Parent = Dropdown.UIElements.Menu.Frame.ScrollingFrame })
 			end
 		end
-
-		if RowCount == 0 then
-			New("TextLabel", {
-				Size = UDim2.new(1, 0, 0, 40),
-				BackgroundTransparency = 1,
-				Text = "No options",
-				TextSize = 15,
-				TextTransparency = 0.5,
-				ThemeTag = {
-					TextColor3 = "Text",
-				},
-				FontFace = Font.new(Creator.Font, Enum.FontWeight.Medium),
-				Parent = Dropdown.UIElements.Menu.Frame.ScrollingFrame,
-				Name = "EmptyState",
-			})
-		end
-
-		-- Recalculate once for the whole list after the layout settles.
-		ScheduleRecalc()
 
 		-- local maxWidth = Dropdown.MenuWidth or 0
 		-- if maxWidth == 0 then
@@ -655,20 +600,26 @@ function DropdownMenu.New(Config, Dropdown, Element, Type)
 		--     end
 		-- end
 
+		RecalculateListSize()
+		RecalculateCanvasSize()
+		ScheduleRecalc()
+
 		Dropdown.UIElements.MenuCanvas.Size = UDim2.new(
 			0,
 			Dropdown.MenuWidth + 6 + 6 + 5 + 5 + 18 + 6 + 6,
 			Dropdown.UIElements.MenuCanvas.Size.Y.Scale,
 			Dropdown.UIElements.MenuCanvas.Size.Y.Offset
 		)
-
-		Dropdown.Values = Values
 		if silent then
 			DropdownModule:Display()
 		else
 			Callback()
 		end
+
+		Dropdown.Values = Values
 	end
+
+	DropdownModule:Refresh(Dropdown.Values, true)
 
 	function DropdownModule:Select(Items)
 		if Items then
@@ -683,40 +634,18 @@ function DropdownMenu.New(Config, Dropdown, Element, Type)
 
 		DropdownModule:Display()
 
-		-- Rebuild row highlighting while the menu is already open so a
-		-- programmatic select is reflected immediately.
+		-- Rebuild highlighting only when the menu is actually open; rebuilding
+		-- on every programmatic Select churned thousands of row instances.
 		if Dropdown.Opened then
 			DropdownModule:Refresh(Dropdown.Values, true)
 		end
 	end
-	
-	-- Build the rows once, like stock WindUI. Deferring this to the first
-	-- click caused empty menus when the click-time build failed.
-	DropdownModule:Refresh(Dropdown.Values, true)
 
-	local stateToken = 0
+	RecalculateListSize()
+	RecalculateCanvasSize()
+	ScheduleRecalc()
 
 	function DropdownModule:Open()
-		stateToken = stateToken + 1
-		local token = stateToken
-
-		local Values = ResolveValues(Dropdown.Values)
-		local ValueCount = type(Values) == "table" and #Values or -1
-		if Values ~= builtValues or ValueCount ~= builtCount then
-			DropdownModule:Refresh(Dropdown.Values, true)
-
-			-- Give the menu a usable height before UpdatePosition runs. The
-			-- layout signal corrects this with the real content height later.
-			RecalculateListSize()
-			RecalculateCanvasSize()
-
-			task.spawn(function()
-				task.wait()
-				RecalculateListSize()
-				RecalculateCanvasSize()
-			end)
-		end
-
 		if not Dropdown.Locked then
 			Dropdown.UIElements.Menu.Visible = true
 			Dropdown.UIElements.MenuCanvas.Visible = true
@@ -729,7 +658,7 @@ function DropdownMenu.New(Config, Dropdown, Element, Type)
 
 			task.spawn(function()
 				task.wait(0.1)
-				if token ~= stateToken or Dropdown.Locked then
+				if Dropdown.Locked then
 					return
 				end
 				Dropdown.Opened = true
@@ -740,8 +669,6 @@ function DropdownMenu.New(Config, Dropdown, Element, Type)
 	end
 
 	function DropdownModule:Close()
-		stateToken = stateToken + 1
-		local token = stateToken
 		Dropdown.Opened = false
 
 		Tween(Dropdown.UIElements.Menu, 0.25, {
@@ -751,48 +678,33 @@ function DropdownMenu.New(Config, Dropdown, Element, Type)
 
 		task.spawn(function()
 			task.wait(0.1)
-			if token ~= stateToken then
-				return
-			end
 			Dropdown.UIElements.Menu.Visible = false
 		end)
 
 		task.spawn(function()
 			task.wait(0.25)
-			if token ~= stateToken then
-				return
-			end
 			Dropdown.UIElements.MenuCanvas.Visible = false
 			Dropdown.UIElements.MenuCanvas.Active = false
 		end)
 	end
 
-	local toggleQueued = false
-	local function ToggleDropdown()
-		-- A click can reach both the trigger and the parent row. Deduplicate
-		-- within the frame without blocking a deliberate second click.
-		if toggleQueued then
-			return
-		end
-		toggleQueued = true
-		task.defer(function()
-			toggleQueued = false
-		end)
+	local TriggerObject = Dropdown.UIElements.Dropdown or Dropdown.DropdownFrame.UIElements.Main
+	TriggerObject.Active = true
 
-		if Dropdown.UIElements.MenuCanvas.Visible then
-			DropdownModule:Close()
-		else
+	Creator.AddSignal(TriggerObject.MouseButton1Click, function()
+		DropdownModule:Open()
+	end)
+
+	-- Fallback for environments where the click event is not delivered to the
+	-- trigger. Open() is idempotent, so both events firing is harmless.
+	Creator.AddSignal(TriggerObject.InputBegan, function(Input)
+		if
+			Input.UserInputType == Enum.UserInputType.MouseButton1
+			or Input.UserInputType == Enum.UserInputType.Touch
+		then
 			DropdownModule:Open()
 		end
-	end
-
-	-- The whole row opens the dropdown, not only the small trigger label.
-	-- Both are connected; the cooldown prevents a double toggle when the
-	-- click reaches the parent as well.
-	Creator.AddSignal(Dropdown.DropdownFrame.UIElements.Main.MouseButton1Click, ToggleDropdown)
-	if Dropdown.UIElements.Dropdown then
-		Creator.AddSignal(Dropdown.UIElements.Dropdown.MouseButton1Click, ToggleDropdown)
-	end
+	end)
 
 	Creator.AddSignal(UserInputService.InputBegan, function(Input)
 		if
@@ -822,9 +734,6 @@ function DropdownMenu.New(Config, Dropdown, Element, Type)
 		end
 	end)
 
-	-- AbsoluteContentSize only updates after Roblox runs layout. The first
-	-- open builds rows lazily, so recalculating immediately measured zero and
-	-- collapsed the menu; react to the layout signal instead.
 	Creator.AddSignal(
 		Dropdown.UIElements.UIListLayout:GetPropertyChangedSignal("AbsoluteContentSize"),
 		ScheduleRecalc
@@ -833,13 +742,7 @@ function DropdownMenu.New(Config, Dropdown, Element, Type)
 	Creator.AddSignal(
 		Dropdown.UIElements.Dropdown and Dropdown.UIElements.Dropdown:GetPropertyChangedSignal("AbsolutePosition")
 			or Dropdown.DropdownFrame.UIElements.Main:GetPropertyChangedSignal("AbsolutePosition"),
-		function()
-			-- The trigger moves every frame while its tab scrolls; there is no
-			-- reason to recompute the menu position while it is closed.
-			if Dropdown.Opened then
-				UpdatePosition()
-			end
-		end
+		UpdatePosition
 	)
 
 	return DropdownModule

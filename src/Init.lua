@@ -13,6 +13,9 @@ local WindUI = {
 
 	ConfigManager = nil,
 	Version = "0.0.0",
+	-- Bumped per local build so you can verify which file is actually loaded:
+	-- print(WindUI.Build)
+	Build = "2026-11-21-stock-dropdown",
 
 	Services = require("./utils/services/Init"),
 
