@@ -114,10 +114,11 @@ function DropdownMenu.New(Config, Dropdown, Element, Type)
 		end
 
 		local ContentY = Dropdown.UIElements.UIListLayout.AbsoluteContentSize.Y / Config.UIScale
-		if ContentY <= 0 and #Dropdown.Tabs > 0 then
-			-- Layout has not run yet; use a row-count estimate until the
-			-- AbsoluteContentSize signal gives us the real height.
-			ContentY = #Dropdown.Tabs * 44
+		if ContentY <= 0 then
+			-- Layout has not run yet; use a row-count estimate (or a minimum
+			-- for the empty-state row) until the layout signal gives us the
+			-- real height.
+			ContentY = math.max(#Dropdown.Tabs * 44, 40)
 		end
 		local SearchBarOffset = Dropdown.SearchBarEnabled and (Element.SearchBarHeight + (Element.MenuPadding * 3))
 			or (Element.MenuPadding * 2)
@@ -196,7 +197,7 @@ function DropdownMenu.New(Config, Dropdown, Element, Type)
 			for _, value in ipairs(Values) do
 				local title = typeof(value) == "table" and value.Title or value
 				if selected[title] then
-					Parts[#Parts + 1] = title
+					Parts[#Parts + 1] = tostring(title)
 				end
 			end
 
@@ -208,7 +209,7 @@ function DropdownMenu.New(Config, Dropdown, Element, Type)
 		end
 
 		if Dropdown.UIElements.Dropdown then
-			Dropdown.UIElements.Dropdown.Frame.Frame.TextLabel.Text = (Str == "" and "--" or Str)
+			Dropdown.UIElements.Dropdown.Frame.Frame.TextLabel.Text = tostring(Str == "" and "--" or Str)
 		end
 	end
 
@@ -299,6 +300,17 @@ function DropdownMenu.New(Config, Dropdown, Element, Type)
 			return
 		end
 
+		-- Support Refresh() (use current values) and guard against a non-table
+		-- slipping in through a mis-called method.
+		Values = Values or Dropdown.Values
+		if type(Values) ~= "table" then
+			warn("[ WindUI.Dropdown ] Refresh expects a table of values")
+			return
+		end
+
+		builtValues = Values
+		builtCount = #Values
+
 		for _, Elementt in next, Dropdown.UIElements.Menu.Frame.ScrollingFrame:GetChildren() do
 			if not Elementt:IsA("UIListLayout") then
 				Elementt:Destroy()
@@ -306,13 +318,15 @@ function DropdownMenu.New(Config, Dropdown, Element, Type)
 		end
 
 		Dropdown.Tabs = {}
+		local RowCount = 0
 
 		if Dropdown.SearchBarEnabled then
 			if not SearchLabel then
 				SearchLabel = CreateInput("Search...", "search", Dropdown.UIElements.Menu, nil, function(val)
 					local Query = string.lower(val)
 					for _, tab in next, Dropdown.Tabs do
-						tab.UIElements.TabItem.Visible = string.find(string.lower(tab.Name), Query, 1, true) ~= nil
+						tab.UIElements.TabItem.Visible =
+							string.find(string.lower(tostring(tab.Name)), Query, 1, true) ~= nil
 					end
 					-- Defer so the layout has applied the new row visibility.
 					ScheduleRecalc()
@@ -324,9 +338,10 @@ function DropdownMenu.New(Config, Dropdown, Element, Type)
 		end
 
 		for Index, Tab in next, Values do
-			if Tab.Type ~= "Divider" then
+			local TabIsTable = typeof(Tab) == "table"
+			if not TabIsTable or Tab.Type ~= "Divider" then
 				local TabMain = {
-					Name = typeof(Tab) == "table" and Tab.Title or Tab,
+					Name = TabIsTable and Tab.Title or Tab,
 					Desc = typeof(Tab) == "table" and Tab.Desc or nil,
 					Icon = typeof(Tab) == "table" and Tab.Icon or nil,
 					IconSize = typeof(Tab) == "table" and Tab.IconSize or nil,
@@ -406,7 +421,7 @@ function DropdownMenu.New(Config, Dropdown, Element, Type)
 								Name = "Title",
 							}, {
 								New("TextLabel", {
-									Text = TabMain.Name,
+									Text = tostring(TabMain.Name or ""),
 									TextXAlignment = "Left",
 									FontFace = Font.new(Creator.Font, Enum.FontWeight.Medium),
 									ThemeTag = {
@@ -496,6 +511,7 @@ function DropdownMenu.New(Config, Dropdown, Element, Type)
 				end
 
 				Dropdown.Tabs[Index] = TabMain
+				RowCount = RowCount + 1
 
 				if Type == "Dropdown" then
 					Creator.AddSignal(TabMain.UIElements.TabItem.MouseButton1Click, function()
@@ -586,6 +602,22 @@ function DropdownMenu.New(Config, Dropdown, Element, Type)
 			end
 		end
 
+		if RowCount == 0 then
+			New("TextLabel", {
+				Size = UDim2.new(1, 0, 0, 40),
+				BackgroundTransparency = 1,
+				Text = "No options",
+				TextSize = 15,
+				TextTransparency = 0.5,
+				ThemeTag = {
+					TextColor3 = "Text",
+				},
+				FontFace = Font.new(Creator.Font, Enum.FontWeight.Medium),
+				Parent = Dropdown.UIElements.Menu.Frame.ScrollingFrame,
+				Name = "EmptyState",
+			})
+		end
+
 		-- Recalculate once for the whole list after the layout settles.
 		ScheduleRecalc()
 
@@ -643,9 +675,11 @@ function DropdownMenu.New(Config, Dropdown, Element, Type)
 		stateToken = stateToken + 1
 		local token = stateToken
 
-		if not made_values then
+		local Values = Dropdown.Values
+		local ValueCount = type(Values) == "table" and #Values or -1
+		if not made_values or Values ~= builtValues or ValueCount ~= builtCount then
 			made_values = true
-			DropdownModule:Refresh(Dropdown.Values, true)
+			DropdownModule:Refresh(Values, true)
 
 			-- Give the menu a usable height before UpdatePosition runs. The
 			-- layout signal corrects this with the real content height later.

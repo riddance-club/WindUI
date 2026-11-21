@@ -61,7 +61,7 @@ function Element:New(Config)
 		Desc = Dropdown.Desc,
 		Parent = Config.Parent,
 		TextOffset = Dropdown.Callback and Dropdown.Width or 20,
-		Hover = not Dropdown.Callback and true or false,
+		Hover = false,
 		Tab = Config.Tab,
 		Index = Config.Index,
 		Window = Config.Window,
@@ -78,6 +78,7 @@ function Element:New(Config)
 		Dropdown.UIElements.Dropdown.Frame.Frame.TextLabel.Size =
 			UDim2.new(1, Dropdown.UIElements.Dropdown.Frame.Frame.TextLabel.Size.X.Offset - 18 - 12 - 12, 0, 0)
 
+		Dropdown.UIElements.Dropdown.ZIndex = 10
 		Dropdown.UIElements.Dropdown.Size = UDim2.new(0, Dropdown.Width, 0, 36)
 		Dropdown.UIElements.Dropdown.Position = UDim2.new(1, 0, Config.Window.NewElements and 0 or 0.5, 0)
 		Dropdown.UIElements.Dropdown.AnchorPoint = Vector2.new(1, Config.Window.NewElements and 0 or 0.5)

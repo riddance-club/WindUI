@@ -296,9 +296,15 @@ function ConfigManager:Init(WindowTable)
         makefolder(ConfigManager.Path)
     end
     
-    -- Config files are read on demand (CreateConfig/Load). Eagerly reading
-    -- every file here only blocked window startup and retained raw JSON that
-    -- nothing consumed.
+    -- Keep the saved-config list populated: UIs commonly build their
+    -- "Existing Configurations" dropdown from ConfigManager.Configs.
+    local files = ConfigManager:AllConfigs()
+    for _, f in next, files do
+        local fullPath = ConfigManager.Path .. f .. ".json"
+        if isfile and readfile and isfile(fullPath) then
+            ConfigManager.Configs[f] = readfile(fullPath)
+        end
+    end
     
     return ConfigManager
 end
