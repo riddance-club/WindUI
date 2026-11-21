@@ -819,7 +819,7 @@ function Element:New(Config)
 		AnchorPoint = Vector2.new(1, 0),
 		Position = UDim2.new(1, 0, 0, 0),
 		ZIndex = 2,
-	}, true)
+	}, nil, true)
 
 	function Colorpicker:Lock()
 		Colorpicker.Locked = true
