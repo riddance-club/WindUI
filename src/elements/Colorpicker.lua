@@ -533,22 +533,25 @@ function Element:Colorpicker(Config, Window, WindUI, OnApply)
 			Hue, Sat, Vib = Colorpicker.Hue, Colorpicker.Sat, Colorpicker.Vib
 		end
 
+		local NewColor = Color3.fromHSV(Hue, Sat, Vib)
+		local RGB = ToRGB(NewColor)
+
 		Colorpicker.UIElements.SatVibMap.BackgroundColor3 = Color3.fromHSV(Hue, 1, 1)
 		SatCursor.Position = UDim2.new(Sat, 0, 1 - Vib, 0)
-		SatCursor.BackgroundColor3 = Color3.fromHSV(Hue, Sat, Vib)
-		NewDisplayFrame.BackgroundColor3 = Color3.fromHSV(Hue, Sat, Vib)
+		SatCursor.BackgroundColor3 = NewColor
+		NewDisplayFrame.BackgroundColor3 = NewColor
 		HueDrag.BackgroundColor3 = Color3.fromHSV(Hue, 1, 1)
 		HueDrag.Position = UDim2.new(0.5, 0, Hue, 0)
 
-		HexInput.Frame.Frame.TextBox.Text = "#" .. Color3.fromHSV(Hue, Sat, Vib):ToHex()
-		RedInput.Frame.Frame.TextBox.Text = ToRGB(Color3.fromHSV(Hue, Sat, Vib))["R"]
-		GreenInput.Frame.Frame.TextBox.Text = ToRGB(Color3.fromHSV(Hue, Sat, Vib))["G"]
-		BlueInput.Frame.Frame.TextBox.Text = ToRGB(Color3.fromHSV(Hue, Sat, Vib))["B"]
+		HexInput.Frame.Frame.TextBox.Text = "#" .. NewColor:ToHex()
+		RedInput.Frame.Frame.TextBox.Text = RGB.R
+		GreenInput.Frame.Frame.TextBox.Text = RGB.G
+		BlueInput.Frame.Frame.TextBox.Text = RGB.B
 
 		if transparency or IsTransparency then
 			NewDisplayFrame.BackgroundTransparency = Colorpicker.Transparency or transparency
-			TransparencyColor.BackgroundColor3 = Color3.fromHSV(Hue, Sat, Vib)
-			TransparencyDrag.BackgroundColor3 = Color3.fromHSV(Hue, Sat, Vib)
+			TransparencyColor.BackgroundColor3 = NewColor
+			TransparencyDrag.BackgroundColor3 = NewColor
 			TransparencyDrag.BackgroundTransparency = Colorpicker.Transparency or transparency
 			TransparencyDrag.Position = UDim2.new(0.5, 0, 1 - Colorpicker.Transparency or transparency, 0)
 			AlphaInput.Frame.Frame.TextBox.Text = Colorpicker:Round(

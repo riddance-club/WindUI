@@ -210,6 +210,18 @@ function Element:New(Config)
 		Tooltip.Container.Position = UDim2.new(0.5, 0, 0, -8)
 	end
 
+	local function ApplyValue(Value, Delta)
+		local Formatted = FormatValue(Value)
+		Slider.UIElements.SliderIcon.Frame.Size = UDim2.new(Delta, 0, 1, 0)
+		Slider.UIElements.SliderContainer.TextBox.Text = Formatted
+		if Tooltip then
+			Tooltip.TitleFrame.Text = Formatted
+		end
+		Slider.Value.Default = Formatted
+		LastValue = Value
+		Creator.SafeCallback(Slider.Callback, Formatted)
+	end
+
 	function Slider:Lock()
 		Slider.Locked = true
 		CanCallback = false
@@ -257,16 +269,12 @@ function Element:New(Config)
 					Value = math.clamp(Value, Slider.Value.Min or 0, Slider.Value.Max or 100)
 
 					if Value ~= LastValue then
-						Tween(Slider.UIElements.SliderIcon.Frame, 0.05, { Size = UDim2.new(delta, 0, 1, 0) }):Play()
-						Slider.UIElements.SliderContainer.TextBox.Text = FormatValue(Value)
-						if Tooltip then
-							Tooltip.TitleFrame.Text = FormatValue(Value)
-						end
-						Slider.Value.Default = FormatValue(Value)
-						LastValue = Value
-						Creator.SafeCallback(Slider.Callback, FormatValue(Value))
+						ApplyValue(Value, delta)
 					end
 
+					if moveconnection then
+						moveconnection:Disconnect()
+					end
 					moveconnection = RunService.RenderStepped:Connect(function()
 						local inputPosition = isTouch and input.Position.X or UserInputService:GetMouseLocation().X
 						local delta = math.clamp(
@@ -278,18 +286,14 @@ function Element:New(Config)
 						Value = CalculateValue(Slider.Value.Min + delta * (Slider.Value.Max - Slider.Value.Min))
 
 						if Value ~= LastValue then
-							Tween(Slider.UIElements.SliderIcon.Frame, 0.05, { Size = UDim2.new(delta, 0, 1, 0) }):Play()
-							Slider.UIElements.SliderContainer.TextBox.Text = FormatValue(Value)
-							if Tooltip then
-								Tooltip.TitleFrame.Text = FormatValue(Value)
-							end
-							Slider.Value.Default = FormatValue(Value)
-							LastValue = Value
-							Creator.SafeCallback(Slider.Callback, FormatValue(Value))
+							ApplyValue(Value, delta)
 						end
 					end)
 
 					-- release slider
+					if releaseconnection then
+						releaseconnection:Disconnect()
+					end
 					releaseconnection = UserInputService.InputEnded:Connect(function(endInput)
 						if
 							(

@@ -30,8 +30,10 @@ function Platoboost.New(Service, Secret)
     --! callbacks
     local onMessage = function(message) end;
     
-    --! wait for game to load
-    repeat task.wait(1) until game:IsLoaded();
+    --! wait for game to load (without a mandatory 1s sleep)
+    if not game:IsLoaded() then
+        game.Loaded:Wait();
+    end
     
     --! functions
     local requestSending = false;

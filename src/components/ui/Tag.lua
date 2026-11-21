@@ -151,15 +151,23 @@ function Tag:New(TagConfig, Parent)
 		return TagModule
 	end
 
+	local ThemeConnection
+
 	function TagModule:Destroy()
+		if ThemeConnection then
+			ThemeConnection:Disconnect()
+			ThemeConnection = nil
+		end
 		TagFrame:Destroy()
 		return TagModule
 	end
 
-	Creator:OnThemeChange(function(NewTheme, OldTheme)
+	ThemeConnection = Creator:OnThemeChange(function(NewTheme, OldTheme)
 		TagTitle.TextColor3 = Creator.GetTextColorForHSB(Creator.GetThemeProperty(TagModule.Color, Creator.Theme))
-		TagIcon.ImageLabel.ImageColor3 =
-			Creator.GetTextColorForHSB(Creator.GetThemeProperty(TagModule.Color, Creator.Theme))
+		if TagIcon then
+			TagIcon.ImageLabel.ImageColor3 =
+				Creator.GetTextColorForHSB(Creator.GetThemeProperty(TagModule.Color, Creator.Theme))
+		end
 	end)
 
 	return TagModule

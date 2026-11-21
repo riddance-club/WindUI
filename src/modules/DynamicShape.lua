@@ -103,6 +103,17 @@ local DynamicShapeModule = {
 	},
 }
 
+local ShapeFallbacks = {
+	["Glass-0.7"] = "SquircleGlass",
+	["Glass-1"] = "SquircleGlass",
+	["Glass-1.4"] = "SquircleGlass",
+	["Squircle-Outline"] = "SquircleOutline",
+}
+
+local function GetShape(Type)
+	return DynamicShapeModule.Shapes[ShapeFallbacks[Type] or Type] or DynamicShapeModule.Shapes.Circle
+end
+
 function DynamicShapeModule:Init(CreatorObj)
 	Creator = CreatorObj
 	return self.New
@@ -116,18 +127,13 @@ function DynamicShapeModule:New(Radius, Type, Properties, Children, IsButton, Is
 		GetType = nil,
 		SetRadius = nil,
 		SetType = nil,
+		__initialized = false,
+		__autoChange = false,
+		__suffix = "",
+		__lastX = nil,
+		__lastY = nil,
+		__lastScale = nil,
 	}
-
-	local ShapeFallbacks = {
-		["Glass-0.7"] = "SquircleGlass",
-		["Glass-1"] = "SquircleGlass",
-		["Glass-1.4"] = "SquircleGlass",
-		["Squircle-Outline"] = "SquircleOutline",
-	}
-
-	local function GetShape(Type)
-		return DynamicShapeModule.Shapes[ShapeFallbacks[Type] or Type] or DynamicShapeModule.Shapes.Circle
-	end
 
 	local ImageLabel = Creator.New(IsButton and "ImageButton" or "ImageLabel", {
 		Image = "",
@@ -139,7 +145,7 @@ function DynamicShapeModule:New(Radius, Type, Properties, Children, IsButton, Is
 	}, Children)
 
 	for Property, Value in next, Properties do
-		if not table.find({ "ThemeTag" }, Property) then
+		if Property ~= "ThemeTag" then
 			ImageLabel[Property] = Value
 		end
 	end
@@ -151,11 +157,20 @@ function DynamicShapeModule:New(Radius, Type, Properties, Children, IsButton, Is
 	end
 
 	function Wrapper:SetType(NewType)
-		Wrapper.Type = NewType
+		if Wrapper.__initialized and Wrapper.Type == NewType then
+			return Wrapper
+		end
+
 		local Shape = GetShape(NewType)
+		Wrapper.Type = NewType
+		Wrapper.__autoChange = Shape.AutoChange ~= false and string.find(NewType, "Squircle", 1, true) ~= nil
+		Wrapper.__suffix = string.find(NewType, "Outline", 1, true) and "Outline"
+			or (string.find(NewType, "Glass", 1, true) and "Glass" or "")
+
 		ImageLabel.Image = Shape.Image
 		ImageLabel.SliceCenter = Shape.Rect
-		Wrapper:SetRadius(Wrapper.Radius)
+		ImageLabel.SliceScale = math.max(Wrapper.Radius / Shape.Radius, 0.0001)
+		Wrapper.__initialized = true
 		return Wrapper
 	end
 
@@ -167,51 +182,43 @@ function DynamicShapeModule:New(Radius, Type, Properties, Children, IsButton, Is
 		return Wrapper.Type
 	end
 
-	Wrapper:SetRadius(Radius)
-	Wrapper:SetType(Type)
+	Wrapper:SetType(Type or "Circle")
 
 	Creator.AddSignal(ImageLabel:GetPropertyChangedSignal("AbsoluteSize"), function()
-		local Shape = GetShape(Wrapper.Type)
-		if Shape.AutoChange == false then
+		if not Wrapper.__autoChange then
 			return
 		end
 
-		if string.find(Wrapper.Type, "Squircle") then
-			local Glass = string.find(Wrapper.Type, "Glass") and "Glass" or nil
-			local Outline = string.find(Wrapper.Type, "Outline") and "Outline" or nil
+		local AbsSize = ImageLabel.AbsoluteSize
+		local Scale = Creator.UIScale
+		local X = math.round(AbsSize.X / Scale)
+		local Y = math.round(AbsSize.Y / Scale)
 
-			local X = math.round(ImageLabel.AbsoluteSize.X / Creator.UIScale)
-			local Y = math.round(ImageLabel.AbsoluteSize.Y / Creator.UIScale)
+		-- Layout fires AbsoluteSize repeatedly for identical sizes; skip all of
+		-- the shape math when nothing actually changed.
+		if X == Wrapper.__lastX and Y == Wrapper.__lastY and Scale == Wrapper.__lastScale then
+			return
+		end
+		Wrapper.__lastX = X
+		Wrapper.__lastY = Y
+		Wrapper.__lastScale = Scale
 
-			local effectiveRadius = Wrapper.Radius ~= 0 and Wrapper.Radius or math.min(X, Y) / 2
-			local SquircleRatio = DynamicShapeModule.Shapes.Squircle.Radius / 1024
-			local RadiusRatio = effectiveRadius / math.min(X, Y)
+		local effectiveRadius = Wrapper.Radius ~= 0 and Wrapper.Radius or math.min(X, Y) / 2
+		local SquircleRatio = DynamicShapeModule.Shapes.Squircle.Radius / 1024
+		local RadiusRatio = effectiveRadius / math.min(X, Y)
 
-			local newType
+		local newType
+		if X > Y then
+			newType = RadiusRatio >= SquircleRatio and "SquircleH" or "Squircle"
+		elseif X < Y then
+			newType = RadiusRatio >= SquircleRatio and "SquircleV" or "Squircle"
+		else
+			newType = RadiusRatio >= SquircleRatio and "Circle" or "Squircle"
+		end
+		newType = newType .. Wrapper.__suffix
 
-			if X > Y then
-				if RadiusRatio >= SquircleRatio then
-					newType = "SquircleH" .. (Outline or Glass or "")
-				else
-					newType = "Squircle" .. (Outline or Glass or "")
-				end
-			elseif X < Y then
-				if RadiusRatio >= SquircleRatio then
-					newType = "SquircleV" .. (Outline or Glass or "")
-				else
-					newType = "Squircle" .. (Outline or Glass or "")
-				end
-			else
-				if RadiusRatio >= SquircleRatio then
-					newType = "Circle" .. (Outline or Glass or "")
-				else
-					newType = "Squircle" .. (Outline or Glass or "")
-				end
-			end
-
-			if newType ~= Wrapper:GetType() then
-				Wrapper:SetType(newType)
-			end
+		if newType ~= Wrapper.Type then
+			Wrapper:SetType(newType)
 		end
 	end)
 

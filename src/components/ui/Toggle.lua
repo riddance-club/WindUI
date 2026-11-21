@@ -333,13 +333,16 @@ function Toggle.New(Value, Icon, IconSize, Parent, Callback, NewElement, Config)
 				local Percent = math.clamp((newX - 2) / (ToggleWidth - FrameWidth - 4), 0, 1)
 
 				local Id, RectSize, RectOffset = Toggle:GetGlassFrame(Percent)
-				ToggleFrame.Frame.Bar.Highlight.Glass.Image = Id
-				ToggleFrame.Frame.Bar.Highlight.Glass.ImageRectSize = RectSize
-				ToggleFrame.Frame.Bar.Highlight.Glass.ImageRectOffset = RectOffset
+				local Glass = ToggleFrame.Frame.Bar.Highlight.Glass
+				if Glass.Image ~= Id then
+					Glass.Image = Id
+					Glass.ImageRectSize = RectSize
+					Glass.ImageRectOffset = RectOffset
+				end
 
-				Tween(ToggleFrame.Frame, 0.12, {
-					Position = UDim2.new(0, newX, 0.5, 0),
-				}, Enum.EasingStyle.Quint, Enum.EasingDirection.Out):Play()
+				-- Directly track the pointer; a 0.12s tween per mouse-move can
+				-- never finish and just churns TweenService every frame.
+				ToggleFrame.Frame.Position = UDim2.new(0, newX, 0.5, 0)
 			end)
 
 			if endConnection then

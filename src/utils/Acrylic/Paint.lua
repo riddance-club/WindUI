@@ -110,7 +110,6 @@ return function(props)
     
     local Blur
     
-    task.wait()
 	if props.UseAcrylic then
 		Blur = AcrylicBlur()
 		

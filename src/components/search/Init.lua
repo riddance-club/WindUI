@@ -324,10 +324,17 @@ function SearchBar.new(TabModule, Parent, OnClose)
 		return Tab
 	end
 
+	local CleanTextCache = {}
+
 	local function CleanText(str)
 		if not str or type(str) ~= "string" then return "" end
-		local cleaned = string.gsub(str, "<[^<>]->", "")
-		return string.lower(cleaned)
+		local Cached = CleanTextCache[str]
+		if Cached then
+			return Cached
+		end
+		local Cleaned = string.lower((string.gsub(str, "<[^<>]->", "")))
+		CleanTextCache[str] = Cleaned
+		return Cleaned
 	end
 	
 	local function GetElementDetails(elem)
@@ -550,13 +557,22 @@ function SearchBar.new(TabModule, Parent, OnClose)
 
 	SearchBarModule:Open()
 
+	local searchDebounceThread
+
 	function SearchBarModule:Search(query)
 		query = query or ""
 
 		currentSearchId += 1
 		local thisSearchId = currentSearchId
 
-		task.spawn(function()
+		-- Debounce: while the user is typing, only the last query needs to run.
+		if searchDebounceThread and coroutine.status(searchDebounceThread) == "suspended" then
+			task.cancel(searchDebounceThread)
+		end
+
+		searchDebounceThread = task.delay(0.08, function()
+			if thisSearchId ~= currentSearchId then return end
+
 			local result = Search(query)
 			if thisSearchId ~= currentSearchId then return end
 
@@ -570,6 +586,7 @@ function SearchBar.new(TabModule, Parent, OnClose)
 			end
 
 			if result and #result > 0 then
+				local Rendered = 0
 				for _, i in ipairs(result) do
 					if thisSearchId ~= currentSearchId then return end
 
@@ -579,11 +596,14 @@ function SearchBar.new(TabModule, Parent, OnClose)
 						TabModule:SelectTab(i.TabIndex)
 					end)
 
-					task.wait()
-					if thisSearchId ~= currentSearchId then return end
+					Rendered = Rendered + 1
+					if Rendered % 25 == 0 then
+						task.wait()
+						if thisSearchId ~= currentSearchId then return end
+					end
 
 					if i.Elements and #i.Elements > 0 then
-						local containerFrame = TabMainElement:FindFirstChild("ParentContainer") 
+						local containerFrame = TabMainElement:FindFirstChild("ParentContainer")
 							and TabMainElement.ParentContainer.Frame
 
 						for _, e in ipairs(i.Elements) do
@@ -607,8 +627,11 @@ function SearchBar.new(TabModule, Parent, OnClose)
 								end
 							)
 
-							task.wait()
-							if thisSearchId ~= currentSearchId then return end
+							Rendered = Rendered + 1
+							if Rendered % 25 == 0 then
+								task.wait()
+								if thisSearchId ~= currentSearchId then return end
+							end
 						end
 					end
 				end

@@ -296,14 +296,9 @@ function ConfigManager:Init(WindowTable)
         makefolder(ConfigManager.Path)
     end
     
-    local files = ConfigManager:AllConfigs()
-    
-    for _, f in next, files do
-        local fullPath = ConfigManager.Path .. f .. ".json"
-        if isfile and readfile and isfile(fullPath) then
-            ConfigManager.Configs[f] = readfile(fullPath)
-        end
-    end
+    -- Config files are read on demand (CreateConfig/Load). Eagerly reading
+    -- every file here only blocked window startup and retained raw JSON that
+    -- nothing consumed.
     
     return ConfigManager
 end
@@ -476,7 +471,6 @@ function ConfigManager:CreateConfig(configFilename, autoload)
             local element = ConfigModule.Elements[name]
             if element and data and data.__type and ConfigManager.Parser[data.__type] then
                 ConfigManager.Parser[data.__type].Load(element, data)
-                task.wait()
             end
         end
         

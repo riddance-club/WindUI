@@ -203,8 +203,15 @@ function Element:New(Config)
 
 	Section.ElementFrame = Main
 
+	local lastTopHeight = -1
 	Main.Outline.Top:GetPropertyChangedSignal("AbsoluteSize"):Connect(function()
-		Main.Outline.Content.Position = UDim2.new(0, 0, 0, (Main.Outline.Top.AbsoluteSize.Y / Config.UIScale) + 10)
+		local TopHeight = Main.Outline.Top.AbsoluteSize.Y
+		if TopHeight == lastTopHeight then
+			return
+		end
+		lastTopHeight = TopHeight
+
+		Main.Outline.Content.Position = UDim2.new(0, 0, 0, (TopHeight / Config.UIScale) + 10)
 
 		if Section.Opened then
 			Section:Open(true)
@@ -333,7 +340,14 @@ function Element:New(Config)
 		end
 	end)
 
+	local lastContentHeight = -1
 	Creator.AddSignal(Main.Outline.Content.UIListLayout:GetPropertyChangedSignal("AbsoluteContentSize"), function()
+		local ContentHeight = Main.Outline.Content.AbsoluteSize.Y
+		if ContentHeight == lastContentHeight then
+			return
+		end
+		lastContentHeight = ContentHeight
+
 		if Section.Opened then
 			Section:Open(true)
 		else

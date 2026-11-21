@@ -452,17 +452,22 @@ return function(Config)
 	Element.UIElements.Locked = Locked
 
 	if Element.Hover then
+		-- Connect the move handler once. Previously it was connected inside
+		-- MouseEnter on every hover, so connections piled up forever and every
+		-- mouse move ran an ever-growing chain of handlers.
+		Creator.AddSignal(Main.MouseMoved, function(x, y)
+			if CanHover then
+				local offset = Vector2.new(((x - Main.AbsolutePosition.X) / Main.AbsoluteSize.X) - 0.5, 0)
+				Hover.HoverGradient.Offset = offset
+				HoverOutline.HoverGradient.Offset = offset
+			end
+		end)
+
 		Creator.AddSignal(Main.MouseEnter, function()
 			if CanHover then
 				--Tween(Main, 0.12, { ImageTransparency = Element.Color and 0.15 or 0.9 }):Play()
 				Tween(Hover, 0.12, { ImageTransparency = 0.9 }):Play()
 				Tween(HoverOutline, 0.12, { ImageTransparency = 0.8 }):Play()
-				Creator.AddSignal(Main.MouseMoved, function(x, y)
-					Hover.HoverGradient.Offset =
-						Vector2.new(((x - Main.AbsolutePosition.X) / Main.AbsoluteSize.X) - 0.5, 0)
-					HoverOutline.HoverGradient.Offset =
-						Vector2.new(((x - Main.AbsolutePosition.X) / Main.AbsoluteSize.X) - 0.5, 0)
-				end)
 			end
 		end)
 		Creator.AddSignal(Main.InputEnded, function()

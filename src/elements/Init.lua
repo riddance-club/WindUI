@@ -21,6 +21,36 @@ return {
 		--Video       = require("./Video"),
 	},
 	Load = function(tbl, Container, Elements, Window, WindUI, OnElementCreateFunction, ElementsModule, UIScale, Tab)
+		local ElementFrameMap = setmetatable({}, { __mode = "k" })
+
+		local function UpdateShapeForIndex(container, index)
+			local element = container.Elements[index]
+			if not element then
+				return
+			end
+
+			local frame = ElementFrameMap[element]
+			if not frame then
+				for key, value in next, element do
+					if typeof(value) == "table" and key:match("Frame$") then
+						frame = value
+						break
+					end
+				end
+				if not frame and element.UpdateShape then
+					frame = element
+				end
+				ElementFrameMap[element] = frame
+			end
+
+			if frame then
+				frame.Index = index
+				if frame.UpdateShape then
+					frame.UpdateShape(container)
+				end
+			end
+		end
+
 		for name, module in next, Elements do
 			tbl[name] = function(self, config)
 				config = config or {}
@@ -79,6 +109,7 @@ return {
 				end
 
 				if frame then
+					ElementFrameMap[content] = frame
 					content.ElementFrame = frame.UIElements.Main
 					function content:SetTitle(title)
 						return frame.SetTitle and frame:SetTitle(title)
@@ -112,7 +143,10 @@ return {
 				end
 
 				if Window.NewElements then
-					tbl:UpdateAllElementShapes(tbl)
+					-- Appending an element can only change the shape of the previous
+					-- last element and the new one, so don't re-scan every element.
+					UpdateShapeForIndex(tbl, config.Index - 1)
+					UpdateShapeForIndex(tbl, config.Index)
 				end
 
 				if OnElementCreateFunction then
@@ -122,27 +156,9 @@ return {
 			end
 		end
 		function tbl:UpdateAllElementShapes(bbb)
-			for i, element in next, bbb.Elements do
-				local frame
-				for key, value in pairs(element) do
-					if typeof(value) == "table" and key:match("Frame$") then
-						frame = value
-						break
-					end
-				end
-
-				if not frame and element.UpdateShape then
-					frame = element
-				end
-
-				if frame then
-					--print("idx changed : " .. i .. " " .. (element.Title or "not found"))
-					frame.Index = i
-					if frame.UpdateShape then
-						--print(" .changed: " .. i)
-						frame.UpdateShape(bbb)
-					end
-				end
+			local elements = bbb.Elements
+			for i = 1, #elements do
+				UpdateShapeForIndex(bbb, i)
 			end
 		end
 	end,

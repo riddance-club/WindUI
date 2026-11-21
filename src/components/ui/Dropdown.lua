@@ -152,16 +152,15 @@ function DropdownMenu.New(Config, Dropdown, Element, Type)
 				end
 			end
 
+			local Parts = {}
 			for _, value in ipairs(Values) do
 				local title = typeof(value) == "table" and value.Title or value
 				if selected[title] then
-					Str = Str .. title .. ", "
+					Parts[#Parts + 1] = title
 				end
 			end
 
-			if #Str > 0 then
-				Str = Str:sub(1, #Str - 2)
-			end
+			Str = table.concat(Parts, ", ")
 		else
 			Str = typeof(Dropdown.Value) == "table" and (Dropdown.Value.Title or Dropdown.Value[1])
 				or Dropdown.Value
@@ -271,15 +270,14 @@ function DropdownMenu.New(Config, Dropdown, Element, Type)
 		if Dropdown.SearchBarEnabled then
 			if not SearchLabel then
 				SearchLabel = CreateInput("Search...", "search", Dropdown.UIElements.Menu, nil, function(val)
+					local Query = string.lower(val)
 					for _, tab in next, Dropdown.Tabs do
-						if string.find(string.lower(tab.Name), string.lower(val), 1, true) then
-							tab.UIElements.TabItem.Visible = true
-						else
-							tab.UIElements.TabItem.Visible = false
-						end
-						RecalculateListSize()
-						RecalculateCanvasSize()
+						tab.UIElements.TabItem.Visible = string.find(string.lower(tab.Name), Query, 1, true) ~= nil
 					end
+					-- Recalculating inside the loop forced a synchronous layout
+					-- per row; the result is the same after a single pass.
+					RecalculateListSize()
+					RecalculateCanvasSize()
 				end, true)
 				SearchLabel.Size = UDim2.new(1, 0, 0, Element.SearchBarHeight)
 				SearchLabel.Position = UDim2.new(0, 0, 0, 0)
@@ -461,8 +459,6 @@ function DropdownMenu.New(Config, Dropdown, Element, Type)
 
 				Dropdown.Tabs[Index] = TabMain
 
-				DropdownModule:Display()
-
 				if Type == "Dropdown" then
 					Creator.AddSignal(TabMain.UIElements.TabItem.MouseButton1Click, function()
 						if Dropdown.Locked or TabMain.Locked then
@@ -543,13 +539,15 @@ function DropdownMenu.New(Config, Dropdown, Element, Type)
 						Callback(Tab.Callback or function() end)
 					end)
 				end
-
-				RecalculateCanvasSize()
-				RecalculateListSize()
 			else
 				require("../../elements/Divider"):New({ Parent = Dropdown.UIElements.Menu.Frame.ScrollingFrame })
 			end
 		end
+
+		-- Recalculate once for the whole list; doing it per row forces a full
+		-- synchronous layout pass for every value.
+		RecalculateListSize()
+		RecalculateCanvasSize()
 
 		-- local maxWidth = Dropdown.MenuWidth or 0
 		-- if maxWidth == 0 then
@@ -566,9 +564,9 @@ function DropdownMenu.New(Config, Dropdown, Element, Type)
 			Dropdown.UIElements.MenuCanvas.Size.Y.Scale,
 			Dropdown.UIElements.MenuCanvas.Size.Y.Offset
 		)
-		Callback()
 
 		Dropdown.Values = Values
+		Callback()
 	end
 
 	function DropdownModule:Select(Items)
@@ -684,7 +682,13 @@ function DropdownMenu.New(Config, Dropdown, Element, Type)
 	Creator.AddSignal(
 		Dropdown.UIElements.Dropdown and Dropdown.UIElements.Dropdown:GetPropertyChangedSignal("AbsolutePosition")
 			or Dropdown.DropdownFrame.UIElements.Main:GetPropertyChangedSignal("AbsolutePosition"),
-		UpdatePosition
+		function()
+			-- The trigger moves every frame while its tab scrolls; there is no
+			-- reason to recompute the menu position while it is closed.
+			if Dropdown.Opened then
+				UpdatePosition()
+			end
+		end
 	)
 
 	return DropdownModule

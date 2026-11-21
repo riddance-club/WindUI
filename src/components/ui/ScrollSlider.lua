@@ -40,6 +40,9 @@ function ScrollSlider.New(ScrollingFrame, Parent, Window, Thickness, WindUI)
 	local isDragging = false
 	local connectionMove, connectionEnd
 
+	local lastSizeRatio = -1
+	local lastThumbY = -1
+
 	local function UpdateVisuals()
 		local canvasY = ScrollingFrame.AbsoluteCanvasSize.Y
 		local windowY = ScrollingFrame.AbsoluteWindowSize.Y
@@ -52,15 +55,22 @@ function ScrollSlider.New(ScrollingFrame, Parent, Window, Thickness, WindUI)
 		Thumb.Visible = true
 
 		local sizeRatio = math.clamp(windowY / canvasY, 0.05, 1)
-		Thumb.Size = UDim2.new(1, 0, sizeRatio, 0)
+		if sizeRatio ~= lastSizeRatio then
+			lastSizeRatio = sizeRatio
+			Thumb.Size = UDim2.new(1, 0, sizeRatio, 0)
+		end
 
 		local maxScroll = canvasY - windowY
 		local maxThumbScale = 1 - sizeRatio
 
 		if maxScroll > 0 then
-			local scrollRatio = ScrollingFrame.CanvasPosition.Y / maxScroll
-			Thumb.Position = UDim2.new(0, 0, math.clamp(scrollRatio * maxThumbScale, 0, maxThumbScale), 0)
-		else
+			local thumbY = math.clamp((ScrollingFrame.CanvasPosition.Y / maxScroll) * maxThumbScale, 0, maxThumbScale)
+			if thumbY ~= lastThumbY then
+				lastThumbY = thumbY
+				Thumb.Position = UDim2.new(0, 0, thumbY, 0)
+			end
+		elseif lastThumbY ~= 0 then
+			lastThumbY = 0
 			Thumb.Position = UDim2.new(0, 0, 0, 0)
 		end
 	end

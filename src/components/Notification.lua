@@ -65,7 +65,6 @@ function NotificationModule.New(Config)
         Notification.CanClose = true
     end--]]
 	NotificationModule.NotificationIndex = NotificationModule.NotificationIndex + 1
-	NotificationModule.Notifications[NotificationModule.NotificationIndex] = Notification
 
 	-- local UIStroke = New("UIStroke", {
 	--     ThemeTag = {
@@ -267,9 +266,15 @@ function NotificationModule.New(Config)
 		Main,
 	})
 
+	local CloseConnection
+
 	function Notification:Close()
 		if not Notification.Closed then
 			Notification.Closed = true
+			if CloseConnection then
+				CloseConnection:Disconnect()
+				CloseConnection = nil
+			end
 			Tween(
 				MainContainer,
 				0.45,
@@ -278,8 +283,10 @@ function NotificationModule.New(Config)
 				Enum.EasingDirection.Out
 			):Play()
 			Tween(Main, 0.55, { Position = UDim2.new(2, 0, 1, 0) }, Enum.EasingStyle.Quint, Enum.EasingDirection.Out):Play()
-			task.wait(0.45)
-			MainContainer:Destroy()
+			-- Don't block the caller for half a second just to clean up.
+			task.delay(0.45, function()
+				MainContainer:Destroy()
+			end)
 		end
 	end
 
@@ -303,12 +310,14 @@ function NotificationModule.New(Config)
 				Enum.EasingDirection.InOut
 			):Play()
 			task.wait(Notification.Duration)
-			Notification:Close()
+			if not Notification.Closed then
+				Notification:Close()
+			end
 		end
 	end)
 
 	if CloseButton then
-		Creator.AddSignal(CloseButton.TextButton.MouseButton1Click, function()
+		CloseConnection = CloseButton.TextButton.MouseButton1Click:Connect(function()
 			Notification:Close()
 		end)
 	end

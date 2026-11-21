@@ -84,7 +84,6 @@ function Element:New(Config)
 			if newShape and CodeElement.CodeFrameModule then
 				CodeElement.CodeFrameModule:SetType(newShape)
 				--CodeElement.BackgroundFrameModule:SetType(newShape)
-				print(newShape)
 				CodeElement.TopbarFrameModule:SetType(
 					table.find({ "Squircle-BL-BR", "SquircleH-BL-BR" }, newShape) ~= nil and "Square" or newShape
 				)

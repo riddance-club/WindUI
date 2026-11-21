@@ -12,9 +12,7 @@ local DynamicShapeModule = require("./DynamicShape")
 
 local RenderStepped = RunService.Heartbeat
 
-local IconsURL = "https://raw.githubusercontent.com/Footagesus/Icons/main/Main-v2.lua"
-
-local Icons = require("../Icons/Main-v2")
+local Icons = require("./Icons")
 
 Icons.SetIconsType("lucide")
 
@@ -28,11 +26,15 @@ Creator = {
 	Theme = nil,
 	Themes = nil,
 	Icons = Icons,
-	Signals = {},
-	Objects = {},
+	-- Connections and font users are weak-keyed so destroyed UI does not
+	-- keep them alive forever.
+	Signals = setmetatable({}, { __mode = "k" }),
+	-- Weak keys so destroyed UI (tooltips, tags, dropdown rows, ...) can be
+	-- collected instead of accumulating for the lifetime of the script.
+	Objects = setmetatable({}, { __mode = "k" }),
 	LocalizationObjects = {},
 	UIScale = 1,
-	FontObjects = {},
+	FontObjects = setmetatable({}, { __mode = "k" }),
 	Language = string.match(LocalizationService.SystemLocaleId, "^[a-z]+"),
 	Request = http_request or (syn and syn.request) or request,
 	DefaultProperties = {
@@ -138,15 +140,16 @@ end
 
 function Creator.AddSignal(Signal, Function)
 	local conn = Signal:Connect(Function)
-	table.insert(Creator.Signals, conn)
+	Creator.Signals[conn] = true
 	return conn
 end
 
 function Creator.DisconnectAll()
-	for idx, signal in next, Creator.Signals do
-		local Connection = table.remove(Creator.Signals, idx)
+	local Signals = Creator.Signals
+	for Connection in next, Signals do
 		Connection:Disconnect()
 	end
+	table.clear(Signals)
 end
 
 function Creator.SafeCallback(Function, ...)
@@ -215,6 +218,7 @@ end
 function Creator.SetTheme(Theme)
 	local PreviousTheme = Creator.Theme
 	Creator.Theme = Theme
+	Creator.ClearThemeCache()
 	Creator.UpdateTheme(nil, false)
 
 	for _, Callback in next, Creator.ThemeChangeCallbacks do
@@ -222,100 +226,147 @@ function Creator.SetTheme(Theme)
 	end
 end
 
+local FontCache = {}
+
+local function NewFont(FontId, Weight, Style)
+	local Key = FontId .. "|" .. Weight.Name .. "|" .. Style.Name
+	local Cached = FontCache[Key]
+	if not Cached then
+		Cached = Font.new(FontId, Weight, Style)
+		FontCache[Key] = Cached
+	end
+	return Cached
+end
+
 function Creator.AddFontObject(Object)
-	table.insert(Creator.FontObjects, Object)
-	Creator.UpdateFont(Creator.Font)
+	Creator.FontObjects[Object] = true
+
+	-- Only rebuild this object's FontFace if it was created with another font.
+	-- (Previously every added label rebuilt a Font for *all* existing labels,
+	-- which made element creation O(n^2).)
+	local Face = Object.FontFace
+	if Face and Face.Family ~= Creator.Font then
+		Object.FontFace = NewFont(Creator.Font, Face.Weight, Face.Style)
+	end
 end
 
 function Creator.UpdateFont(FontId)
+	if Creator.Font == FontId then
+		return
+	end
+
 	Creator.Font = FontId
-	for _, Obj in next, Creator.FontObjects do
-		Obj.FontFace = Font.new(FontId, Obj.FontFace.Weight, Obj.FontFace.Style)
+	for Obj in next, Creator.FontObjects do
+		local Face = Obj.FontFace
+		Obj.FontFace = NewFont(FontId, Face.Weight, Face.Style)
 	end
 end
 
-function Creator.GetThemeProperty(Property, Theme)
-	local function getValue(prop, themeTable)
-		local value = themeTable[prop]
+local function NewThemeCache()
+	return setmetatable({}, { __mode = "k" })
+end
 
-		if value == nil then
-			return nil
-		end
+local ThemeCache = NewThemeCache()
+local ThemeCacheNil = {}
 
-		if typeof(value) == "string" and string.sub(value, 1, 1) == "#" then
-			return Color3.fromHex(value)
-		end
+function Creator.ClearThemeCache()
+	ThemeCache = NewThemeCache()
+end
 
-		if typeof(value) == "Color3" then
-			return value
-		end
-
-		if typeof(value) == "number" then
-			return value
-		end
-
-		if typeof(value) == "table" and value.Color and value.Transparency then
-			return value
-		end
-
-		if typeof(value) == "function" then
-			return value(themeTable)
-		end
-
-		return value
+local function GetThemeValue(Property, Theme)
+	local Value = Theme[Property]
+	if Value == nil then
+		return nil
 	end
 
-	local value = getValue(Property, Theme)
-	if value ~= nil then
-		if typeof(value) == "string" and string.sub(value, 1, 1) ~= "#" then
-			local referencedValue = Creator.GetThemeProperty(value, Theme)
-			if referencedValue ~= nil then
-				return referencedValue
+	local ValueType = typeof(Value)
+	if ValueType == "string" then
+		if string.sub(Value, 1, 1) == "#" then
+			return Color3.fromHex(Value)
+		end
+		return Value
+	elseif ValueType == "Color3" or ValueType == "number" then
+		return Value
+	elseif ValueType == "function" then
+		return Value(Theme)
+	end
+
+	return Value
+end
+
+local function ResolveThemeProperty(Property, Theme, Depth)
+	if not Theme or Depth > 8 then
+		return nil
+	end
+
+	local Value = GetThemeValue(Property, Theme)
+	if Value ~= nil then
+		if typeof(Value) == "string" and string.sub(Value, 1, 1) ~= "#" then
+			local Referenced = ResolveThemeProperty(Value, Theme, Depth + 1)
+			if Referenced ~= nil then
+				return Referenced
 			end
 		else
-			return value
+			return Value
 		end
 	end
 
-	local fallbackProperty = Creator.ThemeFallbacks[Property]
-	if fallbackProperty ~= nil then
-		if typeof(fallbackProperty) == "string" and string.sub(fallbackProperty, 1, 1) ~= "#" then
-			return Creator.GetThemeProperty(fallbackProperty, Theme)
-		else
-			return getValue(Property, { [Property] = fallbackProperty })
+	local FallbackProperty = Creator.ThemeFallbacks and Creator.ThemeFallbacks[Property]
+	if FallbackProperty ~= nil then
+		if typeof(FallbackProperty) == "string" and string.sub(FallbackProperty, 1, 1) ~= "#" then
+			return ResolveThemeProperty(FallbackProperty, Theme, Depth + 1)
 		end
+		return GetThemeValue(Property, { [Property] = FallbackProperty })
 	end
 
-	value = getValue(Property, Creator.Themes["Dark"])
-	if value ~= nil then
-		if typeof(value) == "string" and string.sub(value, 1, 1) ~= "#" then
-			local referencedValue = Creator.GetThemeProperty(value, Creator.Themes["Dark"])
-			if referencedValue ~= nil then
-				return referencedValue
+	local DarkTheme = Creator.Themes and Creator.Themes["Dark"]
+	if DarkTheme and DarkTheme ~= Theme then
+		Value = GetThemeValue(Property, DarkTheme)
+		if Value ~= nil then
+			if typeof(Value) == "string" and string.sub(Value, 1, 1) ~= "#" then
+				return ResolveThemeProperty(Value, DarkTheme, Depth + 1)
 			end
-		else
-			return value
-		end
-	end
-
-	if fallbackProperty ~= nil then
-		if typeof(fallbackProperty) == "string" and string.sub(fallbackProperty, 1, 1) ~= "#" then
-			return Creator.GetThemeProperty(fallbackProperty, Creator.Themes["Dark"])
-		else
-			return getValue(Property, { [Property] = fallbackProperty })
+			return Value
 		end
 	end
 
 	return nil
 end
 
+function Creator.GetThemeProperty(Property, Theme)
+	local TargetTheme = Theme or Creator.Theme
+	if not TargetTheme then
+		return nil
+	end
+
+	local Cache = ThemeCache[TargetTheme]
+	if not Cache then
+		Cache = {}
+		ThemeCache[TargetTheme] = Cache
+	end
+
+	local Value = Cache[Property]
+	if Value == nil then
+		Value = ResolveThemeProperty(Property, TargetTheme, 0)
+		Cache[Property] = Value == nil and ThemeCacheNil or Value
+	end
+
+	if Value == ThemeCacheNil then
+		return nil
+	end
+	return Value
+end
+
 function Creator.AddThemeObject(Object, Properties, skipUpdate)
-	if Creator.Objects[Object] then
-		for prop, value in pairs(Properties) do
-			Creator.Objects[Object].Properties[prop] = value
+	local Existing = Creator.Objects[Object]
+	if Existing then
+		local ExistingProperties = Existing.Properties
+		for prop, value in next, Properties do
+			ExistingProperties[prop] = value
 		end
 	else
-		Creator.Objects[Object] = { Object = Object, Properties = Properties }
+		-- The registry is weak-keyed, so the value must not reference the key.
+		Creator.Objects[Object] = { Properties = Properties }
 	end
 
 	if not skipUpdate then
@@ -337,86 +388,110 @@ function Creator.AddLangObject(idx)
 	return Object
 end
 
-function Creator.UpdateTheme(TargetObject, isTween, isTweenTarget, Duration, EasingStyle, EasingDirection)
-	local function ApplyTheme(objData)
-		for Property, ColorKey in pairs(objData.Properties or {}) do
-			local value = Creator.GetThemeProperty(ColorKey, Creator.Theme)
-			if value ~= nil then
-				if typeof(value) == "Color3" then
-					local gradient = objData.Object:FindFirstChild("LibraryGradient")
-					if gradient then
-						gradient:Destroy()
-					end
+local function ApplyThemeValue(Object, objData, Property, Value, isTween, isTweenTarget, Duration, EasingStyle, EasingDirection)
+	if typeof(Value) == "Color3" then
+		local Gradient = objData.Gradient
+		if Gradient then
+			Gradient:Destroy()
+			objData.Gradient = nil
+		end
 
-					if isTweenTarget then
-						Creator.Tween(
-							objData.Object,
-							Duration or 0.2,
-							{ [Property] = value },
-							EasingStyle or Enum.EasingStyle.Quint,
-							EasingDirection or Enum.EasingDirection.Out
-						):Play()
-					elseif isTween then
-						Creator.Tween(objData.Object, 0.08, { [Property] = value }):Play()
-					else
-						objData.Object[Property] = value
-					end
-				elseif typeof(value) == "table" and value.Color and value.Transparency then
-					objData.Object[Property] = Color3.new(1, 1, 1)
+		-- Repeated SetThemeTag calls (tab selection, hover, ...) often target
+		-- the value that is already applied; don't build a tween for those.
+		if Object[Property] == Value then
+			return
+		end
 
-					local gradient = objData.Object:FindFirstChild("LibraryGradient")
-					if not gradient then
-						gradient = Instance.new("UIGradient")
-						gradient.Name = "LibraryGradient"
-						gradient.Parent = objData.Object
-					end
+		if isTweenTarget then
+			Creator.Tween(
+				Object,
+				Duration or 0.2,
+				{ [Property] = Value },
+				EasingStyle or Enum.EasingStyle.Quint,
+				EasingDirection or Enum.EasingDirection.Out
+			):Play()
+		elseif isTween then
+			Creator.Tween(Object, 0.08, { [Property] = Value }):Play()
+		else
+			Object[Property] = Value
+		end
+	elseif typeof(Value) == "number" then
+		if Object[Property] == Value then
+			return
+		end
 
-					gradient.Color = value.Color
-					gradient.Transparency = value.Transparency
+		if isTweenTarget then
+			Creator.Tween(
+				Object,
+				Duration or 0.2,
+				{ [Property] = Value },
+				EasingStyle or Enum.EasingStyle.Quint,
+				EasingDirection or Enum.EasingDirection.Out
+			):Play()
+		elseif isTween then
+			Creator.Tween(Object, 0.08, { [Property] = Value }):Play()
+		else
+			Object[Property] = Value
+		end
+	elseif typeof(Value) == "table" and Value.Color and Value.Transparency then
+		Object[Property] = Color3.new(1, 1, 1)
 
-					for prop, propValue in pairs(value) do
-						if prop ~= "Color" and prop ~= "Transparency" and gradient[prop] ~= nil then
-							gradient[prop] = propValue
-						end
-					end
-				elseif typeof(value) == "number" then
-					if isTweenTarget then
-						Creator.Tween(
-							objData.Object,
-							Duration or 0.2,
-							{ [Property] = value },
-							EasingStyle or Enum.EasingStyle.Quint,
-							EasingDirection or Enum.EasingDirection.Out
-						):Play()
-					elseif isTween then
-						Creator.Tween(objData.Object, 0.08, { [Property] = value }):Play()
-					else
-						objData.Object[Property] = value
-					end
-				end
-			else
-				local gradient = objData.Object:FindFirstChild("LibraryGradient")
-				if gradient then
-					gradient:Destroy()
-				end
+		local Gradient = objData.Gradient
+		if not Gradient then
+			Gradient = Instance.new("UIGradient")
+			Gradient.Name = "LibraryGradient"
+			Gradient.Parent = Object
+			objData.Gradient = Gradient
+		end
+
+		Gradient.Color = Value.Color
+		Gradient.Transparency = Value.Transparency
+
+		for prop, propValue in next, Value do
+			if prop ~= "Color" and prop ~= "Transparency" and Gradient[prop] ~= nil then
+				Gradient[prop] = propValue
 			end
 		end
 	end
+end
 
+local function ApplyTheme(Object, objData, isTween, isTweenTarget, Duration, EasingStyle, EasingDirection)
+	local Properties = objData.Properties
+	if not Properties then
+		return
+	end
+
+	for Property, ColorKey in next, Properties do
+		local Value = Creator.GetThemeProperty(ColorKey, Creator.Theme)
+		if Value ~= nil then
+			ApplyThemeValue(Object, objData, Property, Value, isTween, isTweenTarget, Duration, EasingStyle, EasingDirection)
+		else
+			local Gradient = objData.Gradient
+			if Gradient then
+				Gradient:Destroy()
+				objData.Gradient = nil
+			end
+		end
+	end
+end
+
+function Creator.UpdateTheme(TargetObject, isTween, isTweenTarget, Duration, EasingStyle, EasingDirection)
 	if TargetObject then
 		local objData = Creator.Objects[TargetObject]
 		if objData then
-			ApplyTheme(objData)
+			ApplyTheme(TargetObject, objData, isTween, isTweenTarget, Duration, EasingStyle, EasingDirection)
 		end
 	else
-		for _, objData in pairs(Creator.Objects) do
-			ApplyTheme(objData)
+		for Object, objData in next, Creator.Objects do
+			ApplyTheme(Object, objData, isTween, isTweenTarget, Duration, EasingStyle, EasingDirection)
 		end
 	end
 end
 
 function Creator.SetThemeTag(Object, ThemeTag, Duration, EasingStyle, EasingDirection)
-	Creator.AddThemeObject(Object, ThemeTag)
+	-- Skip the immediate (non-tweened) application; otherwise the tween below
+	-- starts from the value that was just written and does no visible work.
+	Creator.AddThemeObject(Object, ThemeTag, true)
 	Creator.UpdateTheme(Object, false, true, Duration, EasingStyle, EasingDirection)
 end
 
@@ -488,32 +563,56 @@ function Creator.SetLanguage(lang)
 	Creator.UpdateLang()
 end
 
+local IconCache = { [true] = {}, [false] = {} }
+
 function Creator.Icon(Icon, formatdefault)
-	return Icons.Icon2(Icon, nil, formatdefault ~= false)
+	if type(Icon) ~= "string" then
+		return Icons.Icon2(Icon, nil, formatdefault ~= false)
+	end
+
+	local Formatted = formatdefault ~= false
+	local Cache = IconCache[Formatted]
+	local Cached = Cache[Icon]
+	if Cached == nil then
+		Cached = Icons.Icon2(Icon, nil, Formatted)
+		Cache[Icon] = Cached == nil and false or Cached
+	end
+
+	if Cached == false then
+		return nil
+	end
+	return Cached
 end
 
 function Creator.AddIcons(packName, iconsData)
+	table.clear(IconCache[true])
+	table.clear(IconCache[false])
 	return Icons.AddIcons(packName, iconsData)
 end
 
-function Creator.New(Name, Properties, Children)
-	local Object = Instance.new(Name)
+function Creator.New(ClassName, Properties, Children)
+	local Object = Instance.new(ClassName)
 
-	for Name, Value in next, Creator.DefaultProperties[Name] or {} do
-		Object[Name] = Value
+	local Defaults = Creator.DefaultProperties[ClassName]
+	if Defaults then
+		for Prop, Value in next, Defaults do
+			Object[Prop] = Value
+		end
 	end
 
-	for Name, Value in next, Properties or {} do
-		if Name ~= "ThemeTag" then
-			Object[Name] = Value
-		end
-		if Creator.Localization and Creator.Localization.Enabled and Name == "Text" then
-			local TranslationId = string.match(Value, "^" .. Creator.Localization.Prefix .. "(.+)")
-			if TranslationId then
-				local currentId = #Creator.LocalizationObjects + 1
-				Creator.LocalizationObjects[currentId] = { TranslationId = TranslationId, Object = Object }
+	if Properties then
+		for Prop, Value in next, Properties do
+			if Prop ~= "ThemeTag" then
+				Object[Prop] = Value
+			end
+			if Creator.Localization and Creator.Localization.Enabled and Prop == "Text" then
+				local TranslationId = string.match(Value, "^" .. Creator.Localization.Prefix .. "(.+)")
+				if TranslationId then
+					local currentId = #Creator.LocalizationObjects + 1
+					Creator.LocalizationObjects[currentId] = { TranslationId = TranslationId, Object = Object }
 
-				Creator.SetLangForObject(currentId)
+					Creator.SetLangForObject(currentId)
+				end
 			end
 		end
 	end
@@ -522,11 +621,13 @@ function Creator.New(Name, Properties, Children)
 		Child.Parent = Object
 	end
 
-	if Properties and Properties.ThemeTag then
-		Creator.AddThemeObject(Object, Properties.ThemeTag)
-	end
-	if Properties and Properties.FontFace then
-		Creator.AddFontObject(Object)
+	if Properties then
+		if Properties.ThemeTag then
+			Creator.AddThemeObject(Object, Properties.ThemeTag)
+		end
+		if Properties.FontFace then
+			Creator.AddFontObject(Object)
+		end
 	end
 	return Object
 end
@@ -639,17 +740,18 @@ function Creator.Drag(mainFrame, dragFrames, ondrag)
 		end
 
 		local delta = input.Position - dragStart
-		Creator.Tween(mainFrame, 0.02, {
-			Position = UDim2.new(
-				startPos.X.Scale,
-				startPos.X.Offset + delta.X,
-				startPos.Y.Scale,
-				startPos.Y.Offset + delta.Y
-			),
-		}):Play()
+		-- Set the position directly instead of creating a new Tween per input
+		-- event. InputChanged already fires at input rate, so the tween only
+		-- added TweenService churn (and garbage) on the hottest path.
+		mainFrame.Position = UDim2.new(
+			startPos.X.Scale,
+			startPos.X.Offset + delta.X,
+			startPos.Y.Scale,
+			startPos.Y.Offset + delta.Y
+		)
 	end
 
-	for _, dragFrame in pairs(dragFrames) do
+	for _, dragFrame in ipairs(dragFrames) do
 		dragFrame.InputBegan:Connect(function(input)
 			if not DragModule.CanDraggable or dragging then
 				return
@@ -747,26 +849,16 @@ function Creator.Image(Img, Name, Corner, Folder, Type, IsThemeTag, Themed, Them
 	Folder = Folder or "Temp"
 	Name = Creator.SanitizeFilename(Name)
 
+	local IconData = Creator.Icon(Img)
+
 	local ImageFrame = New("Frame", {
 		Size = UDim2.new(0, 0, 0, 0),
 		BackgroundTransparency = 1,
-	}, {
-		New("ImageLabel", {
-			Size = UDim2.new(1, 0, 1, 0),
-			BackgroundTransparency = 1,
-			ScaleType = "Crop",
-			ThemeTag = (Creator.Icon(Img) or Themed) and {
-				ImageColor3 = IsThemeTag and (ThemeTagName or "Icon") or nil,
-			} or nil,
-		}, {
-			New("UICorner", {
-				CornerRadius = UDim.new(0, Corner),
-			}),
-		}),
 	})
-	if Creator.Icon(Img) then
-		ImageFrame.ImageLabel:Destroy()
 
+	if IconData then
+		-- Build the icon label directly instead of creating a plain ImageLabel
+		-- (plus corner) only to destroy it and build another one.
 		local IconLabel = Icons.Image({
 			Icon = Img,
 			Size = UDim2.new(1, 0, 1, 0),
@@ -776,7 +868,24 @@ function Creator.Image(Img, Name, Corner, Folder, Type, IsThemeTag, Themed, Them
 			},
 		}).IconFrame
 		IconLabel.Parent = ImageFrame
-	elseif string.find(Img, "http") and not string.find(Img, "roblox.com") then
+		return ImageFrame
+	end
+
+	local ImageLabel = New("ImageLabel", {
+		Size = UDim2.new(1, 0, 1, 0),
+		BackgroundTransparency = 1,
+		ScaleType = "Crop",
+		ThemeTag = Themed and {
+			ImageColor3 = IsThemeTag and (ThemeTagName or "Icon") or nil,
+		} or nil,
+	}, {
+		New("UICorner", {
+			CornerRadius = UDim.new(0, Corner),
+		}),
+	})
+	ImageLabel.Parent = ImageFrame
+
+	if string.find(Img, "http") and not string.find(Img, "roblox.com") then
 		local FileName = "WindUI/" .. Folder .. "/assets/." .. Type .. "-" .. Name .. ".png"
 		local success, response = pcall(function()
 			task.spawn(function()
@@ -794,7 +903,7 @@ function Creator.Image(Img, Name, Corner, Folder, Type, IsThemeTag, Themed, Them
 
 				local assetSuccess, asset = pcall(getcustomasset, FileName)
 				if assetSuccess then
-					ImageFrame.ImageLabel.Image = asset
+					ImageLabel.Image = asset
 				else
 					warn(
 						string.format(
@@ -820,7 +929,7 @@ function Creator.Image(Img, Name, Corner, Folder, Type, IsThemeTag, Themed, Them
 	elseif Img == "" then
 		ImageFrame.Visible = false
 	else
-		ImageFrame.ImageLabel.Image = Img
+		ImageLabel.Image = Img
 	end
 
 	return ImageFrame
@@ -938,14 +1047,7 @@ function Creator:GetElementPosition(elements, targetIndex, isHStack)
 		return nil, 1
 	end
 
-	-- local maxIndex = 0
-	-- for k,_ in next, elements do
-	--     if type(k) == "number" and k > maxIndex then maxIndex = k end
-	-- end
-
 	local maxIndex = #elements
-	--print(maxIndex)
-
 	if maxIndex == 0 or targetIndex < 1 or targetIndex > maxIndex then
 		return nil, 2
 	end
@@ -962,42 +1064,30 @@ function Creator:GetElementPosition(elements, targetIndex, isHStack)
 		return nil, 3
 	end
 
-	local function calculate(pos, size)
-		if size == 1 then
-			return "Squircle"
-		end
-		if pos == 1 then
-			return isHStack and "SquircleH-TL-TR" or "Squircle-TL-TR"
-		end
-		if pos == size then
-			return isHStack and "SquircleH-BL-BR" or "Squircle-BL-BR"
-		end
-		return "Square"
+	-- Walk to the group boundaries instead of scanning the whole element list.
+	local groupStart = targetIndex
+	while groupStart > 1 and not isDelimiter(elements[groupStart - 1]) do
+		groupStart = groupStart - 1
 	end
 
-	local groupStart = 1
-	local groupCount = 0
-
-	for i = 1, maxIndex do
-		local el = elements[i]
-		if isDelimiter(el) then
-			if targetIndex >= groupStart and targetIndex <= i - 1 then
-				local pos = targetIndex - groupStart + 1
-				return calculate(pos, groupCount)
-			end
-			groupStart = i + 1
-			groupCount = 0
-		else
-			groupCount = groupCount + 1
-		end
+	local groupEnd = targetIndex
+	while groupEnd < maxIndex and not isDelimiter(elements[groupEnd + 1]) do
+		groupEnd = groupEnd + 1
 	end
 
-	if targetIndex >= groupStart and targetIndex <= maxIndex then
-		local pos = targetIndex - groupStart + 1
-		return calculate(pos, groupCount)
-	end
+	local pos = targetIndex - groupStart + 1
+	local size = groupEnd - groupStart + 1
 
-	return nil, 4
+	if size == 1 then
+		return "Squircle"
+	end
+	if pos == 1 then
+		return isHStack and "SquircleH-TL-TR" or "Squircle-TL-TR"
+	end
+	if pos == size then
+		return isHStack and "SquircleH-BL-BR" or "Squircle-BL-BR"
+	end
+	return "Square"
 end
 
 return Creator

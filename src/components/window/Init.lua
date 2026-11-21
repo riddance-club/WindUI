@@ -2058,9 +2058,9 @@ return function(Config)
 					math.clamp(newSize.Y.Offset, Window.MinSize.Y, Window.MaxSize.Y)
 				)
 
-				Tween(Window.UIElements.Main, 0.08, {
-					Size = newSize,
-				}, Enum.EasingStyle.Quad, Enum.EasingDirection.Out):Play()
+				-- Directly apply the size: creating a tween for every InputChanged
+				-- event just churned TweenService and garbage while resizing.
+				Window.UIElements.Main.Size = newSize
 
 				Window.Size = newSize
 			end
