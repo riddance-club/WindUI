@@ -371,21 +371,6 @@ return function(Config)
 			HorizontalAlignment = "Center",
 			Padding = UDim.new(0, 8),
 		}),
-		New("UIGradient", {
-			Name = "HoverGradient",
-			Color = ColorSequence.new({
-				ColorSequenceKeypoint.new(0, Color3.new(1, 1, 1)),
-				ColorSequenceKeypoint.new(0.5, Color3.new(1, 1, 1)),
-				ColorSequenceKeypoint.new(1, Color3.new(1, 1, 1)),
-			}),
-			Transparency = NumberSequence.new({
-				NumberSequenceKeypoint.new(0, 1),
-				NumberSequenceKeypoint.new(0.25, 0.9),
-				NumberSequenceKeypoint.new(0.5, 0.3),
-				NumberSequenceKeypoint.new(0.75, 0.9),
-				NumberSequenceKeypoint.new(1, 1),
-			}),
-		}),
 	}, nil, true)
 
 	local Hover, HoverTable = NewRoundFrame(Element.UICorner, "Squircle", {
@@ -397,21 +382,6 @@ return function(Config)
 		},
 		Parent = ElementFullFrame,
 	}, {
-		New("UIGradient", {
-			Name = "HoverGradient",
-			Color = ColorSequence.new({
-				ColorSequenceKeypoint.new(0, Color3.new(1, 1, 1)),
-				ColorSequenceKeypoint.new(0.5, Color3.new(1, 1, 1)),
-				ColorSequenceKeypoint.new(1, Color3.new(1, 1, 1)),
-			}),
-			Transparency = NumberSequence.new({
-				NumberSequenceKeypoint.new(0, 1),
-				NumberSequenceKeypoint.new(0.25, 0.9),
-				NumberSequenceKeypoint.new(0.5, 0.3),
-				NumberSequenceKeypoint.new(0.75, 0.9),
-				NumberSequenceKeypoint.new(1, 1),
-			}),
-		}),
 		New("UIListLayout", {
 			FillDirection = "Horizontal",
 			VerticalAlignment = "Center",
@@ -457,12 +427,6 @@ return function(Config)
 				--Tween(Main, 0.12, { ImageTransparency = Element.Color and 0.15 or 0.9 }):Play()
 				Tween(Hover, 0.12, { ImageTransparency = 0.9 }):Play()
 				Tween(HoverOutline, 0.12, { ImageTransparency = 0.8 }):Play()
-				Creator.AddSignal(Main.MouseMoved, function(x, y)
-					Hover.HoverGradient.Offset =
-						Vector2.new(((x - Main.AbsolutePosition.X) / Main.AbsoluteSize.X) - 0.5, 0)
-					HoverOutline.HoverGradient.Offset =
-						Vector2.new(((x - Main.AbsolutePosition.X) / Main.AbsoluteSize.X) - 0.5, 0)
-				end)
 			end
 		end)
 		Creator.AddSignal(Main.InputEnded, function()
@@ -634,60 +598,11 @@ return function(Config)
 	end
 
 	function Element:Highlight()
-		local OutlineGradient = New("UIGradient", {
-			Color = ColorSequence.new({
-				ColorSequenceKeypoint.new(0, Color3.new(1, 1, 1)),
-				ColorSequenceKeypoint.new(0.5, Color3.new(1, 1, 1)),
-				ColorSequenceKeypoint.new(1, Color3.new(1, 1, 1)),
-			}),
-			Transparency = NumberSequence.new({
-				NumberSequenceKeypoint.new(0, 1),
-				NumberSequenceKeypoint.new(0.1, 0.9),
-				NumberSequenceKeypoint.new(0.5, 0.3),
-				NumberSequenceKeypoint.new(0.9, 0.9),
-				NumberSequenceKeypoint.new(1, 1),
-			}),
-			Rotation = 0,
-			Offset = Vector2.new(-1, 0),
-			Parent = HighlightOutline,
-		})
-
-		local HighlightGradient = New("UIGradient", {
-			Color = ColorSequence.new({
-				ColorSequenceKeypoint.new(0, Color3.new(1, 1, 1)),
-				ColorSequenceKeypoint.new(0.5, Color3.new(1, 1, 1)),
-				ColorSequenceKeypoint.new(1, Color3.new(1, 1, 1)),
-			}),
-			Transparency = NumberSequence.new({
-				NumberSequenceKeypoint.new(0, 1),
-				NumberSequenceKeypoint.new(0.15, 0.8),
-				NumberSequenceKeypoint.new(0.5, 0.1),
-				NumberSequenceKeypoint.new(0.85, 0.8),
-				NumberSequenceKeypoint.new(1, 1),
-			}),
-			Rotation = 0,
-			Offset = Vector2.new(-1, 0),
-			Parent = Highlight,
-		})
-
-		HighlightOutline.ImageTransparency = 0.65
-		Highlight.ImageTransparency = 0.88
-
-		Tween(OutlineGradient, 0.75, {
-			Offset = Vector2.new(1, 0),
-		}):Play()
-
-		Tween(HighlightGradient, 0.75, {
-			Offset = Vector2.new(1, 0),
-		}):Play()
-
-		task.spawn(function()
-			task.wait(0.75)
-			HighlightOutline.ImageTransparency = 1
-			Highlight.ImageTransparency = 1
-			OutlineGradient:Destroy()
-			HighlightGradient:Destroy()
-		end)
+		-- Flat flash instead of the animated gradient sweep.
+		HighlightOutline.ImageTransparency = 0.7
+		Highlight.ImageTransparency = 0.9
+		Tween(HighlightOutline, 0.45, { ImageTransparency = 1 }):Play()
+		Tween(Highlight, 0.45, { ImageTransparency = 1 }):Play()
 	end
 
 	function Element.UpdateShape(Tab)

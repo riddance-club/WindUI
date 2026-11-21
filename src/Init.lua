@@ -15,7 +15,7 @@ local WindUI = {
 	Version = "0.0.0",
 	-- Bumped per local build so you can verify which file is actually loaded:
 	-- print(WindUI.Build)
-	Build = "2026-11-21-stock-input",
+	Build = "2026-11-21-flat-effects",
 
 	Services = require("./utils/services/Init"),
 
