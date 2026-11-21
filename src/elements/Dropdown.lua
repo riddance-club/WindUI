@@ -70,6 +70,10 @@ function Element:New(Config)
 		Tags = Config.Tags,
 	})
 
+	-- Make the whole row clickable so opening never depends on hitting the
+	-- small trigger label.
+	Dropdown.DropdownFrame.UIElements.Main.Active = true
+
 	if Dropdown.Callback then
 		Dropdown.UIElements.Dropdown =
 			CreateLabel("", nil, Dropdown.DropdownFrame.UIElements.Main, nil, Config.Window.NewElements and 12 or 10)

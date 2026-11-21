@@ -31,6 +31,27 @@ function DropdownMenu.New(Config, Dropdown, Element, Type)
 		HorizontalAlignment = "Center",
 	})
 
+	-- Values may be a table or a function provider (e.g. ConfigStore.List).
+	local function ResolveValues(Values)
+		if type(Values) == "function" then
+			local Success, Result = pcall(Values)
+			if Success and type(Result) == "table" then
+				return Result
+			end
+			warn("[ WindUI.Dropdown ] Values provider failed: " .. tostring(Result))
+			return {}
+		end
+		return Values
+	end
+
+	-- Values can be strings, instances, or tables using common naming fields.
+	local function GetValueLabel(Value)
+		if typeof(Value) == "table" then
+			return Value.Title or Value.Name or Value.Text or Value.Label or Value[1]
+		end
+		return Value
+	end
+
 	Dropdown.UIElements.Menu = Creator.NewRoundFrame(Element.MenuCorner, "Squircle", {
 		ThemeTag = {
 			ImageColor3 = "DropdownBackground",
@@ -181,21 +202,20 @@ function DropdownMenu.New(Config, Dropdown, Element, Type)
 	local SearchLabel
 
 	function DropdownModule:Display()
-		local Values = Dropdown.Values
 		local Str = ""
 
 		if Dropdown.Multi then
+			local Values = ResolveValues(Dropdown.Values)
 			local selected = {}
 			if typeof(Dropdown.Value) == "table" then
 				for _, item in ipairs(Dropdown.Value) do
-					local title = typeof(item) == "table" and item.Title or item
-					selected[title] = true
+					selected[GetValueLabel(item)] = true
 				end
 			end
 
 			local Parts = {}
 			for _, value in ipairs(Values) do
-				local title = typeof(value) == "table" and value.Title or value
+				local title = GetValueLabel(value)
 				if selected[title] then
 					Parts[#Parts + 1] = tostring(title)
 				end
@@ -203,7 +223,7 @@ function DropdownMenu.New(Config, Dropdown, Element, Type)
 
 			Str = table.concat(Parts, ", ")
 		else
-			Str = typeof(Dropdown.Value) == "table" and (Dropdown.Value.Title or Dropdown.Value[1])
+			Str = typeof(Dropdown.Value) == "table" and (GetValueLabel(Dropdown.Value) or Dropdown.Value[1])
 				or Dropdown.Value
 				or ""
 		end
@@ -300,14 +320,18 @@ function DropdownMenu.New(Config, Dropdown, Element, Type)
 			return
 		end
 
-		-- Support Refresh() (use current values) and guard against a non-table
-		-- slipping in through a mis-called method.
-		Values = Values or Dropdown.Values
+		-- Support Refresh() (use current values), function providers, and guard
+		-- against a non-table slipping in through a mis-called method.
+		local Source = Values or Dropdown.Values
+		Values = ResolveValues(Source)
 		if type(Values) ~= "table" then
 			warn("[ WindUI.Dropdown ] Refresh expects a table of values")
 			return
 		end
 
+		if type(Source) ~= "function" then
+			Dropdown.Values = Values
+		end
 		builtValues = Values
 		builtCount = #Values
 
@@ -341,13 +365,13 @@ function DropdownMenu.New(Config, Dropdown, Element, Type)
 			local TabIsTable = typeof(Tab) == "table"
 			if not TabIsTable or Tab.Type ~= "Divider" then
 				local TabMain = {
-					Name = TabIsTable and Tab.Title or Tab,
-					Desc = typeof(Tab) == "table" and Tab.Desc or nil,
-					Icon = typeof(Tab) == "table" and Tab.Icon or nil,
-					IconSize = typeof(Tab) == "table" and Tab.IconSize or nil,
+					Name = TabIsTable and (Tab.Title or Tab.Name or Tab.Text or Tab.Label or Tab[1]) or Tab,
+					Desc = TabIsTable and (Tab.Desc or Tab.Description or Tab.SubTitle) or nil,
+					Icon = TabIsTable and Tab.Icon or nil,
+					IconSize = TabIsTable and Tab.IconSize or nil,
 					Original = Tab,
 					Selected = false,
-					Locked = typeof(Tab) == "table" and Tab.Locked or false,
+					Locked = TabIsTable and Tab.Locked or false,
 					UIElements = {},
 				}
 				local TabIcon
@@ -473,7 +497,7 @@ function DropdownMenu.New(Config, Dropdown, Element, Type)
 				if Dropdown.Multi and typeof(Dropdown.Value) == "string" then
 					for _, i in next, Dropdown.Values do
 						if typeof(i) == "table" then
-							if i.Title == Dropdown.Value then
+							if GetValueLabel(i) == Dropdown.Value then
 								Dropdown.Value = { i }
 							end
 						else
@@ -488,7 +512,7 @@ function DropdownMenu.New(Config, Dropdown, Element, Type)
 					local found = false
 					if typeof(Dropdown.Value) == "table" then
 						for _, item in ipairs(Dropdown.Value) do
-							local itemName = typeof(item) == "table" and item.Title or item
+							local itemName = GetValueLabel(item)
 							if itemName == TabMain.Name then
 								found = true
 								break
@@ -497,7 +521,8 @@ function DropdownMenu.New(Config, Dropdown, Element, Type)
 					end
 					TabMain.Selected = found
 				else
-					local currentValue = typeof(Dropdown.Value) == "table" and Dropdown.Value.Title or Dropdown.Value
+					local currentValue = typeof(Dropdown.Value) == "table" and GetValueLabel(Dropdown.Value)
+						or Dropdown.Value
 					TabMain.Selected = currentValue == TabMain.Name
 				end
 
@@ -665,9 +690,9 @@ function DropdownMenu.New(Config, Dropdown, Element, Type)
 		end
 	end
 	
-	DropdownModule:Display()
-	local made_values = false
-	ScheduleRecalc()
+	-- Build the rows once, like stock WindUI. Deferring this to the first
+	-- click caused empty menus when the click-time build failed.
+	DropdownModule:Refresh(Dropdown.Values, true)
 
 	local stateToken = 0
 
@@ -675,11 +700,10 @@ function DropdownMenu.New(Config, Dropdown, Element, Type)
 		stateToken = stateToken + 1
 		local token = stateToken
 
-		local Values = Dropdown.Values
+		local Values = ResolveValues(Dropdown.Values)
 		local ValueCount = type(Values) == "table" and #Values or -1
-		if not made_values or Values ~= builtValues or ValueCount ~= builtCount then
-			made_values = true
-			DropdownModule:Refresh(Values, true)
+		if Values ~= builtValues or ValueCount ~= builtCount then
+			DropdownModule:Refresh(Dropdown.Values, true)
 
 			-- Give the menu a usable height before UpdatePosition runs. The
 			-- layout signal corrects this with the real content height later.
@@ -743,19 +767,32 @@ function DropdownMenu.New(Config, Dropdown, Element, Type)
 		end)
 	end
 
-	Creator.AddSignal(
-		(
-			Dropdown.UIElements.Dropdown and Dropdown.UIElements.Dropdown.MouseButton1Click
-			or Dropdown.DropdownFrame.UIElements.Main.MouseButton1Click
-		),
-		function()
-			if Dropdown.UIElements.MenuCanvas.Visible then
-				DropdownModule:Close()
-			else
-				DropdownModule:Open()
-			end
+	local toggleQueued = false
+	local function ToggleDropdown()
+		-- A click can reach both the trigger and the parent row. Deduplicate
+		-- within the frame without blocking a deliberate second click.
+		if toggleQueued then
+			return
 		end
-	)
+		toggleQueued = true
+		task.defer(function()
+			toggleQueued = false
+		end)
+
+		if Dropdown.UIElements.MenuCanvas.Visible then
+			DropdownModule:Close()
+		else
+			DropdownModule:Open()
+		end
+	end
+
+	-- The whole row opens the dropdown, not only the small trigger label.
+	-- Both are connected; the cooldown prevents a double toggle when the
+	-- click reaches the parent as well.
+	Creator.AddSignal(Dropdown.DropdownFrame.UIElements.Main.MouseButton1Click, ToggleDropdown)
+	if Dropdown.UIElements.Dropdown then
+		Creator.AddSignal(Dropdown.UIElements.Dropdown.MouseButton1Click, ToggleDropdown)
+	end
 
 	Creator.AddSignal(UserInputService.InputBegan, function(Input)
 		if
