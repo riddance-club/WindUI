@@ -40,6 +40,16 @@ function DropdownMenu.New(Config, Dropdown, Element, Type)
 		AnchorPoint = Vector2.new(1, 0),
 		Position = UDim2.new(1, 0, 0, 0),
 	}, {
+		-- Flat outline so the menu reads as a surface even when its background
+		-- closely matches the window (1.6.57-style dark palette).
+		Creator.NewRoundFrame(Element.MenuCorner, "SquircleOutline", {
+			Size = UDim2.new(1, 0, 1, 0),
+			ThemeTag = {
+				ImageColor3 = "Outline",
+			},
+			ImageTransparency = 0.88,
+			Name = "Border",
+		}),
 		New("UIPadding", {
 			PaddingTop = UDim.new(0, Element.MenuPadding),
 			PaddingLeft = UDim.new(0, Element.MenuPadding),
@@ -99,18 +109,29 @@ function DropdownMenu.New(Config, Dropdown, Element, Type)
 
 	local function RecalculateListSize()
 		local MaxHeight = Config.WindUI.DropdownGui.AbsoluteSize.Y
+		if MaxHeight <= 0 then
+			MaxHeight = 400
+		end
 
 		local ContentY = Dropdown.UIElements.UIListLayout.AbsoluteContentSize.Y / Config.UIScale
+		if ContentY <= 0 and #Dropdown.Tabs > 0 then
+			-- Layout has not run yet; use a row-count estimate until the
+			-- AbsoluteContentSize signal gives us the real height.
+			ContentY = #Dropdown.Tabs * 44
+		end
 		local SearchBarOffset = Dropdown.SearchBarEnabled and (Element.SearchBarHeight + (Element.MenuPadding * 3))
 			or (Element.MenuPadding * 2)
 		local TotalY = ContentY + SearchBarOffset
 
+		local CanvasWidth = Dropdown.UIElements.MenuCanvas.AbsoluteSize.X
+		if CanvasWidth <= 0 then
+			CanvasWidth = Dropdown.UIElements.MenuCanvas.Size.X.Offset
+		end
+
 		if TotalY > MaxHeight then
-			Dropdown.UIElements.MenuCanvas.Size =
-				UDim2.fromOffset(Dropdown.UIElements.MenuCanvas.AbsoluteSize.X, MaxHeight)
+			Dropdown.UIElements.MenuCanvas.Size = UDim2.fromOffset(CanvasWidth, MaxHeight)
 		else
-			Dropdown.UIElements.MenuCanvas.Size =
-				UDim2.fromOffset(Dropdown.UIElements.MenuCanvas.AbsoluteSize.X, TotalY)
+			Dropdown.UIElements.MenuCanvas.Size = UDim2.fromOffset(CanvasWidth, TotalY)
 		end
 	end
 
@@ -124,6 +145,11 @@ function DropdownMenu.New(Config, Dropdown, Element, Type)
 			recalcPending = false
 			RecalculateListSize()
 			RecalculateCanvasSize()
+
+			-- The menu height changed; re-run the flip/offset logic.
+			if Dropdown.UIElements.MenuCanvas.Visible then
+				UpdatePosition()
+			end
 		end)
 	end
 
@@ -131,7 +157,8 @@ function DropdownMenu.New(Config, Dropdown, Element, Type)
 		local button = Dropdown.UIElements.Dropdown or Dropdown.DropdownFrame.UIElements.Main
 		local menu = Dropdown.UIElements.MenuCanvas
 
-		local availableSpaceBelow = Camera.ViewportSize.Y
+		local ActiveCamera = workspace.CurrentCamera or Camera
+		local availableSpaceBelow = ActiveCamera.ViewportSize.Y
 			- (button.AbsolutePosition.Y + button.AbsoluteSize.Y)
 			- Element.MenuPadding
 			- 54
@@ -267,7 +294,7 @@ function DropdownMenu.New(Config, Dropdown, Element, Type)
 		end
 	end
 
-	function DropdownModule:Refresh(Values)
+	function DropdownModule:Refresh(Values, silent)
 		if Config.Window.Destroyed then
 			return
 		end
@@ -551,6 +578,7 @@ function DropdownMenu.New(Config, Dropdown, Element, Type)
 							return
 						end
 						Callback(Tab.Callback or function() end)
+						DropdownModule:Close()
 					end)
 				end
 			else
@@ -578,7 +606,11 @@ function DropdownMenu.New(Config, Dropdown, Element, Type)
 		)
 
 		Dropdown.Values = Values
-		Callback()
+		if silent then
+			DropdownModule:Display()
+		else
+			Callback()
+		end
 	end
 
 	function DropdownModule:Select(Items)
@@ -597,7 +629,7 @@ function DropdownMenu.New(Config, Dropdown, Element, Type)
 		-- Rebuild row highlighting while the menu is already open so a
 		-- programmatic select is reflected immediately.
 		if Dropdown.Opened then
-			DropdownModule:Refresh(Dropdown.Values)
+			DropdownModule:Refresh(Dropdown.Values, true)
 		end
 	end
 	
@@ -612,9 +644,20 @@ function DropdownMenu.New(Config, Dropdown, Element, Type)
 		local token = stateToken
 
 		if not made_values then
-			made_values = true;
-			DropdownModule:Refresh(Dropdown.Values)
-		end;
+			made_values = true
+			DropdownModule:Refresh(Dropdown.Values, true)
+
+			-- Give the menu a usable height before UpdatePosition runs. The
+			-- layout signal corrects this with the real content height later.
+			RecalculateListSize()
+			RecalculateCanvasSize()
+
+			task.spawn(function()
+				task.wait()
+				RecalculateListSize()
+				RecalculateCanvasSize()
+			end)
+		end
 
 		if not Dropdown.Locked then
 			Dropdown.UIElements.Menu.Visible = true
@@ -707,6 +750,14 @@ function DropdownMenu.New(Config, Dropdown, Element, Type)
 			end
 		end
 	end)
+
+	-- AbsoluteContentSize only updates after Roblox runs layout. The first
+	-- open builds rows lazily, so recalculating immediately measured zero and
+	-- collapsed the menu; react to the layout signal instead.
+	Creator.AddSignal(
+		Dropdown.UIElements.UIListLayout:GetPropertyChangedSignal("AbsoluteContentSize"),
+		ScheduleRecalc
+	)
 
 	Creator.AddSignal(
 		Dropdown.UIElements.Dropdown and Dropdown.UIElements.Dropdown:GetPropertyChangedSignal("AbsolutePosition")
