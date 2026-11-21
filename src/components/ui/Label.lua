@@ -45,29 +45,25 @@ function Label.New(Text, Icon, Parent, IsPlaceholder, Radius, RemoveGlass)
 		}, {
 			Creator.NewRoundFrame(Radius, "Squircle", {
 				ThemeTag = {
-					ImageColor3 = "Placeholder",
+					ImageColor3 = "Accent",
 				},
 				Size = UDim2.new(1, 0, 1, 0),
-				ImageTransparency = 0.85,
+				ImageTransparency = 0.97,
 			}),
-			not RemoveGlass and Creator.NewRoundFrame(Radius, "Squircle", {
+			not RemoveGlass and Creator.NewRoundFrame(Radius, "SquircleOutline", {
 				ThemeTag = {
 					ImageColor3 = "Outline",
 				},
 				Size = UDim2.new(1, 1, 1, 1),
-				ImageTransparency = 0.9,
+				ImageTransparency = 0.95,
 				AnchorPoint = Vector2.new(0.5, 0.5),
 				Position = UDim2.new(0.5, 0, 0.5, 0),
 			}) or nil,
 			Creator.NewRoundFrame(Radius, "Squircle", {
 				Size = UDim2.new(1, 0, 1, 0),
 				Name = "Frame",
-				ThemeTag = {
-					ImageColor3 = "LabelBackground",
-					ImageTransparency = "LabelBackgroundTransparency",
-				},
-				-- ImageColor3 = Color3.new(1,1,1),
-				-- ImageTransparency = .95
+				ImageColor3 = Color3.new(1, 1, 1),
+				ImageTransparency = 0.95,
 			}, {
 				New("UIPadding", {
 					PaddingLeft = UDim.new(0, 12),

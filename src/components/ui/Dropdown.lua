@@ -16,7 +16,7 @@ local Creator = require("../../modules/Creator")
 local New = Creator.New
 local Tween = Creator.Tween
 
-local TabBackgroundTransparency = 0.67
+local TabBackgroundTransparency = 0.95
 
 function DropdownMenu.New(Config, Dropdown, Element, Type)
 	local DropdownModule = {}
@@ -112,6 +112,19 @@ function DropdownMenu.New(Config, Dropdown, Element, Type)
 			Dropdown.UIElements.MenuCanvas.Size =
 				UDim2.fromOffset(Dropdown.UIElements.MenuCanvas.AbsoluteSize.X, TotalY)
 		end
+	end
+
+	local recalcPending = false
+	local function ScheduleRecalc()
+		if recalcPending then
+			return
+		end
+		recalcPending = true
+		task.defer(function()
+			recalcPending = false
+			RecalculateListSize()
+			RecalculateCanvasSize()
+		end)
 	end
 
 	function UpdatePosition()
@@ -214,7 +227,7 @@ function DropdownMenu.New(Config, Dropdown, Element, Type)
 
 				if isLocked then
 					Tween(tab.UIElements.TabItem, 0.1, { ImageTransparency = 1 }):Play()
-					--Tween(tab.UIElements.TabItem.Highlight, 0.1, { ImageTransparency = 1 }):Play()
+					Tween(tab.UIElements.TabItem.Highlight, 0.1, { ImageTransparency = 1 }):Play()
 					Tween(tab.UIElements.TabItem.Frame.Title.TextLabel, 0.1, { TextTransparency = 0.6 }):Play()
 					if tab.UIElements.TabIcon then
 						Tween(tab.UIElements.TabIcon.ImageLabel, 0.1, { ImageTransparency = 0.6 }):Play()
@@ -225,14 +238,14 @@ function DropdownMenu.New(Config, Dropdown, Element, Type)
 				else
 					if tab.Selected then
 						Tween(tab.UIElements.TabItem, 0.1, { ImageTransparency = TabBackgroundTransparency }):Play()
-						--Tween(tab.UIElements.TabItem.Highlight, 0.1, { ImageTransparency = 0.75 }):Play()
+						Tween(tab.UIElements.TabItem.Highlight, 0.1, { ImageTransparency = 0.75 }):Play()
 						Tween(tab.UIElements.TabItem.Frame.Title.TextLabel, 0.1, { TextTransparency = 0 }):Play()
 						if tab.UIElements.TabIcon then
 							Tween(tab.UIElements.TabIcon.ImageLabel, 0.1, { ImageTransparency = 0 }):Play()
 						end
 					else
 						Tween(tab.UIElements.TabItem, 0.1, { ImageTransparency = 1 }):Play()
-						--Tween(tab.UIElements.TabItem.Highlight, 0.1, { ImageTransparency = 1 }):Play()
+						Tween(tab.UIElements.TabItem.Highlight, 0.1, { ImageTransparency = 1 }):Play()
 						Tween(
 							tab.UIElements.TabItem.Frame.Title.TextLabel,
 							0.1,
@@ -274,10 +287,8 @@ function DropdownMenu.New(Config, Dropdown, Element, Type)
 					for _, tab in next, Dropdown.Tabs do
 						tab.UIElements.TabItem.Visible = string.find(string.lower(tab.Name), Query, 1, true) ~= nil
 					end
-					-- Recalculating inside the loop forced a synchronous layout
-					-- per row; the result is the same after a single pass.
-					RecalculateListSize()
-					RecalculateCanvasSize()
+					-- Defer so the layout has applied the new row visibility.
+					ScheduleRecalc()
 				end, true)
 				SearchLabel.Size = UDim2.new(1, 0, 0, Element.SearchBarHeight)
 				SearchLabel.Position = UDim2.new(0, 0, 0, 0)
@@ -450,7 +461,7 @@ function DropdownMenu.New(Config, Dropdown, Element, Type)
 
 				if TabMain.Selected and not TabMain.Locked then
 					TabMain.UIElements.TabItem.ImageTransparency = TabBackgroundTransparency
-					--TabMain.UIElements.TabItem.Highlight.ImageTransparency = 0.75
+					TabMain.UIElements.TabItem.Highlight.ImageTransparency = 0.75
 					TabMain.UIElements.TabItem.Frame.Title.TextLabel.TextTransparency = 0
 					if TabMain.UIElements.TabIcon then
 						TabMain.UIElements.TabIcon.ImageLabel.ImageTransparency = 0
@@ -473,7 +484,7 @@ function DropdownMenu.New(Config, Dropdown, Element, Type)
 									0.1,
 									{ ImageTransparency = TabBackgroundTransparency }
 								):Play()
-								--Tween(TabMain.UIElements.TabItem.Highlight, 0.1, { ImageTransparency = 0.75 }):Play()
+								Tween(TabMain.UIElements.TabItem.Highlight, 0.1, { ImageTransparency = 0.75 }):Play()
 								Tween(TabMain.UIElements.TabItem.Frame.Title.TextLabel, 0.1, { TextTransparency = 0 }):Play()
 								if TabMain.UIElements.TabIcon then
 									Tween(TabMain.UIElements.TabIcon.ImageLabel, 0.1, { ImageTransparency = 0 }):Play()
@@ -485,7 +496,7 @@ function DropdownMenu.New(Config, Dropdown, Element, Type)
 								end
 								TabMain.Selected = false
 								Tween(TabMain.UIElements.TabItem, 0.1, { ImageTransparency = 1 }):Play()
-								--Tween(TabMain.UIElements.TabItem.Highlight, 0.1, { ImageTransparency = 1 }):Play()
+								Tween(TabMain.UIElements.TabItem.Highlight, 0.1, { ImageTransparency = 1 }):Play()
 								Tween(TabMain.UIElements.TabItem.Frame.Title.TextLabel, 0.1, { TextTransparency = 0.4 }):Play()
 								if TabMain.UIElements.TabIcon then
 									Tween(TabMain.UIElements.TabIcon.ImageLabel, 0.1, { ImageTransparency = 0.2 }):Play()
@@ -501,7 +512,7 @@ function DropdownMenu.New(Config, Dropdown, Element, Type)
 						else
 							for Index, TabPisun in next, Dropdown.Tabs do
 								Tween(TabPisun.UIElements.TabItem, 0.1, { ImageTransparency = 1 }):Play()
-								--Tween(TabPisun.UIElements.TabItem.Highlight, 0.1, { ImageTransparency = 1 }):Play()
+								Tween(TabPisun.UIElements.TabItem.Highlight, 0.1, { ImageTransparency = 1 }):Play()
 								Tween(
 									TabPisun.UIElements.TabItem.Frame.Title.TextLabel,
 									0.1,
@@ -514,7 +525,7 @@ function DropdownMenu.New(Config, Dropdown, Element, Type)
 							end
 							TabMain.Selected = true
 							Tween(TabMain.UIElements.TabItem, 0.1, { ImageTransparency = TabBackgroundTransparency }):Play()
-							--Tween(TabMain.UIElements.TabItem.Highlight, 0.1, { ImageTransparency = 0.75 }):Play()
+							Tween(TabMain.UIElements.TabItem.Highlight, 0.1, { ImageTransparency = 0.75 }):Play()
 							Tween(TabMain.UIElements.TabItem.Frame.Title.TextLabel, 0.1, { TextTransparency = 0 }):Play()
 							if TabMain.UIElements.TabIcon then
 								Tween(TabMain.UIElements.TabIcon.ImageLabel, 0.1, { ImageTransparency = 0 }):Play()
@@ -522,6 +533,9 @@ function DropdownMenu.New(Config, Dropdown, Element, Type)
 							Dropdown.Value = TabMain.Original
 						end
 						Callback()
+						if not Dropdown.Multi then
+							DropdownModule:Close()
+						end
 					end)
 				elseif Type == "Menu" then
 					if not TabMain.Locked then
@@ -544,10 +558,8 @@ function DropdownMenu.New(Config, Dropdown, Element, Type)
 			end
 		end
 
-		-- Recalculate once for the whole list; doing it per row forces a full
-		-- synchronous layout pass for every value.
-		RecalculateListSize()
-		RecalculateCanvasSize()
+		-- Recalculate once for the whole list after the layout settles.
+		ScheduleRecalc()
 
 		-- local maxWidth = Dropdown.MenuWidth or 0
 		-- if maxWidth == 0 then
@@ -579,24 +591,29 @@ function DropdownMenu.New(Config, Dropdown, Element, Type)
 				Dropdown.Value = nil
 			end
 		end
-		
-		--if Dropdown.Opened then
-		--DropdownModule:Refresh(Dropdown.Values)
-		--end;
+
+		DropdownModule:Display()
+
+		-- Rebuild row highlighting while the menu is already open so a
+		-- programmatic select is reflected immediately.
+		if Dropdown.Opened then
+			DropdownModule:Refresh(Dropdown.Values)
+		end
 	end
 	
 	DropdownModule:Display()
-	local made_values = false;
-	RecalculateListSize()
-	RecalculateCanvasSize()
+	local made_values = false
+	ScheduleRecalc()
+
+	local stateToken = 0
 
 	function DropdownModule:Open()
+		stateToken = stateToken + 1
+		local token = stateToken
+
 		if not made_values then
 			made_values = true;
 			DropdownModule:Refresh(Dropdown.Values)
-
-			RecalculateListSize()
-			RecalculateCanvasSize()
 		end;
 
 		if not Dropdown.Locked then
@@ -611,7 +628,7 @@ function DropdownMenu.New(Config, Dropdown, Element, Type)
 
 			task.spawn(function()
 				task.wait(0.1)
-				if Dropdown.Locked then
+				if token ~= stateToken or Dropdown.Locked then
 					return
 				end
 				Dropdown.Opened = true
@@ -622,6 +639,8 @@ function DropdownMenu.New(Config, Dropdown, Element, Type)
 	end
 
 	function DropdownModule:Close()
+		stateToken = stateToken + 1
+		local token = stateToken
 		Dropdown.Opened = false
 
 		Tween(Dropdown.UIElements.Menu, 0.25, {
@@ -631,11 +650,17 @@ function DropdownMenu.New(Config, Dropdown, Element, Type)
 
 		task.spawn(function()
 			task.wait(0.1)
+			if token ~= stateToken then
+				return
+			end
 			Dropdown.UIElements.Menu.Visible = false
 		end)
 
 		task.spawn(function()
 			task.wait(0.25)
+			if token ~= stateToken then
+				return
+			end
 			Dropdown.UIElements.MenuCanvas.Visible = false
 			Dropdown.UIElements.MenuCanvas.Active = false
 		end)
@@ -647,7 +672,11 @@ function DropdownMenu.New(Config, Dropdown, Element, Type)
 			or Dropdown.DropdownFrame.UIElements.Main.MouseButton1Click
 		),
 		function()
-			DropdownModule:Open()
+			if Dropdown.UIElements.MenuCanvas.Visible then
+				DropdownModule:Close()
+			else
+				DropdownModule:Open()
+			end
 		end
 	)
 

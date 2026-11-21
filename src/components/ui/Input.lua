@@ -54,29 +54,25 @@ function Input.New(Placeholder, Icon, Parent, Type, Callback, OnChange, Radius, 
 		}, {
 			Creator.NewRoundFrame(Radius, "Squircle", {
 				ThemeTag = {
-					ImageColor3 = "Placeholder",
+					ImageColor3 = "Accent",
 				},
 				Size = UDim2.new(1, 0, 1, 0),
-				ImageTransparency = 0.85,
+				ImageTransparency = 0.97,
 			}),
-			not RemoveGlass and Creator.NewRoundFrame(Radius - 1, "Squircle", {
+			not RemoveGlass and Creator.NewRoundFrame(Radius - 1, "SquircleOutline", {
 				ThemeTag = {
 					ImageColor3 = "Outline",
 				},
 				Size = UDim2.new(1, 1, 1, 1),
 				AnchorPoint = Vector2.new(0.5, 0.5),
 				Position = UDim2.new(0.5, 0, 0.5, 0),
-				ImageTransparency = 0.8,
+				ImageTransparency = 0.95,
 			}) or nil,
 			Creator.NewRoundFrame(Radius, "Squircle", {
 				Size = UDim2.new(1, 0, 1, 0),
 				Name = "Frame",
-				ThemeTag = {
-					ImageColor3 = "LabelBackground",
-					ImageTransparency = "LabelBackgroundTransparency",
-				},
-				--[[ImageColor3 = Color3.new(1, 1, 1),
-				ImageTransparency = 1,]]
+				ImageColor3 = Color3.new(1, 1, 1),
+				ImageTransparency = 0.95,
 			}, {
 				New("UIPadding", {
 					PaddingTop = UDim.new(0, Type ~= "Textarea" and 0 or 12),

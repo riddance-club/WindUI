@@ -4,10 +4,10 @@ return function(WindUI, Creator)
 			Name = "Dark",
 
 			Accent = Color3.fromHex("#18181b"),
-			Dialog = Color3.fromHex("#1a1a1a"),
+			Dialog = Color3.fromHex("#161616"),
 			Outline = Color3.fromHex("#FFFFFF"),
 			Text = Color3.fromHex("#FFFFFF"),
-			Placeholder = Color3.fromHex("#a1a1a1"),
+			Placeholder = Color3.fromHex("#7a7a7a"),
 			Background = Color3.fromHex("#101010"),
 			Button = Color3.fromHex("#52525b"),
 			Icon = Color3.fromHex("#a1a1aa"),
@@ -25,26 +25,24 @@ return function(WindUI, Creator)
 			LabelBackground = Color3.fromHex("#000000"),
 			LabelBackgroundTransparency = 0.83,
 
-			ElementBackground = Color3.fromHex("#2A2A2C"),
-			ElementBackgroundTransparency = 0,
 		},
 
 		Light = {
 			Name = "Light",
 
-			Accent = Color3.fromHex("#efefef"),
+			Accent = Color3.fromHex("#FFFFFF"),
 			Dialog = Color3.fromHex("#f4f4f5"),
-			Outline = Color3.fromHex("#ffffff"),
+			Outline = Color3.fromHex("#09090b"),
 			Text = Color3.fromHex("#000000"),
 			Placeholder = Color3.fromHex("#555555"),
-			Background = Color3.fromHex("#FFFFFF"),
+			Background = Color3.fromHex("#e4e4e7"),
 			Button = Color3.fromHex("#18181b"),
 			Icon = Color3.fromHex("#52525b"),
 			Toggle = Color3.fromHex("#33C759"),
 			Slider = Color3.fromHex("#0091FF"),
 			Checkbox = Color3.fromHex("#0091FF"),
 
-			DropdownTabBackground = Color3.fromHex("#bebebe"),
+			DropdownTabBackground = Color3.fromHex("#ffffff"),
 			DropdownBackground = Color3.fromHex("#ffffff"),
 
 			TabBackground = Color3.fromHex("#ffffff"),
@@ -59,8 +57,6 @@ return function(WindUI, Creator)
 			LabelBackground = Color3.fromHex("#efefef"),
 			LabelBackgroundTransparency = 0,
 
-			ElementBackground = Color3.fromHex("#ffffff"),
-			ElementBackgroundTransparency = 0,
 		},
 
 		Rose = {
@@ -72,7 +68,7 @@ return function(WindUI, Creator)
 			Text = Color3.fromHex("#fdf2f8"),
 			Placeholder = Color3.fromHex("#d67aa6"),
 			Background = Color3.fromHex("#1f0308"),
-			Button = Color3.fromHex("#e95f74"),
+			Button = Color3.fromHex("#e11d48"),
 			Icon = Color3.fromHex("#fb7185"),
 
 			ElementBackground = Color3.fromHex("#381E23"),
@@ -252,7 +248,7 @@ return function(WindUI, Creator)
 			Background = Color3.fromHex("#0a0f1e"),
 			Button = Color3.fromHex("#2563eb"),
 			Primary = Color3.fromHex("#2563eb"),
-			Icon = Color3.fromHex("#5591f4"),
+			Icon = Color3.fromHex("#3b82f6"),
 
 			ElementBackground = Color3.fromHex("#242836"),
 			ElementBackgroundTransparency = 0,
@@ -281,7 +277,7 @@ return function(WindUI, Creator)
 			Dialog = Color3.fromHex("#1e1e1e"),
 			--Outline = Color3.fromHex("#78dce8"),
 			Text = Color3.fromHex("#fcfcfa"),
-			Placeholder = Color3.fromHex("#afafaf"),
+			Placeholder = Color3.fromHex("#6f6f6f"),
 			Background = Color3.fromHex("#191622"),
 			Button = Color3.fromHex("#ab9df2"),
 			Icon = Color3.fromHex("#a9dc76"),
