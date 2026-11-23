@@ -424,25 +424,32 @@ function TabModule.New(Config, UIScale)
 		end
 	end)
 
-	function Tab:ScrollToTheElement(elemindex)
-		Tab.UIElements.ContainerFrame.ScrollingEnabled = false
+	function Tab:ScrollToTheElement(Target)
+		local Element = type(Target) == "table" and Target or Tab.Elements[Target]
+		local ElementFrame = Element and Element.ElementFrame
+		if not ElementFrame then
+			return Tab
+		end
 
-		Creator.Tween(Tab.UIElements.ContainerFrame, 0.45, {
+		local ContainerFrame = Tab.UIElements.ContainerFrame
+		ContainerFrame.ScrollingEnabled = false
+
+		Creator.Tween(ContainerFrame, 0.45, {
 			CanvasPosition = Vector2.new(
 				0,
-				Tab.Elements[elemindex].ElementFrame.AbsolutePosition.Y
-					- Tab.UIElements.ContainerFrame.AbsolutePosition.Y
-					- Tab.UIElements.ContainerFrame.UIPadding.PaddingTop.Offset
+				ElementFrame.AbsolutePosition.Y
+					- ContainerFrame.AbsolutePosition.Y
+					- ContainerFrame.UIPadding.PaddingTop.Offset
 			),
 		}, Enum.EasingStyle.Quint, Enum.EasingDirection.Out):Play()
 
 		task.spawn(function()
 			task.wait(0.48)
 
-			if Tab.Elements[elemindex].Highlight then
-				Tab.Elements[elemindex]:Highlight()
+			if Element.Highlight then
+				Element:Highlight()
 			end
-			Tab.UIElements.ContainerFrame.ScrollingEnabled = true
+			ContainerFrame.ScrollingEnabled = true
 		end)
 
 		return Tab

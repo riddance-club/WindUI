@@ -5,7 +5,6 @@ local cloneref = (cloneref or clonereference or function(instance)
 end)
 
 local UserInputService = cloneref(game:GetService("UserInputService"))
-local Mouse = cloneref(game:GetService("Players")).LocalPlayer:GetMouse()
 local Camera = cloneref(game:GetService("Workspace")).CurrentCamera
 
 local CurrentCamera = workspace.CurrentCamera
@@ -506,7 +505,7 @@ function DropdownMenu.New(Config, Dropdown, Element, Type)
 				DropdownModule:Display()
 
 				if Type == "Dropdown" then
-					Creator.AddSignal(TabMain.UIElements.TabItem.MouseButton1Click, function()
+					Creator.AddSignal(TabMain.UIElements.TabItem.MouseButton1Up, function()
 						if Dropdown.Locked or TabMain.Locked then
 							return
 						end
@@ -578,7 +577,7 @@ function DropdownMenu.New(Config, Dropdown, Element, Type)
 							Tween(TabMain.UIElements.TabItem, 0.08, { ImageTransparency = 1 }):Play()
 						end)
 					end
-					Creator.AddSignal(TabMain.UIElements.TabItem.MouseButton1Click, function()
+					Creator.AddSignal(TabMain.UIElements.TabItem.MouseButton1Up, function()
 						if Dropdown.Locked or TabMain.Locked then
 							return
 						end
@@ -689,24 +688,16 @@ function DropdownMenu.New(Config, Dropdown, Element, Type)
 	end
 
 	local TriggerObject = Dropdown.UIElements.Dropdown or Dropdown.DropdownFrame.UIElements.Main
-	TriggerObject.Active = true
 
-	Creator.AddSignal(TriggerObject.MouseButton1Click, function()
+	-- Open on release. MouseButton1Up works for both trigger shapes used by
+	-- WindUI (the TextButton label and the ImageButton menu row), while the
+	-- previous Activated/InputBegan + MouseButton1Click path was not firing
+	-- reliably for every caller.
+	Creator.AddSignal(TriggerObject.MouseButton1Up, function()
 		DropdownModule:Open()
 	end)
 
-	-- Fallback for environments where the click event is not delivered to the
-	-- trigger. Open() is idempotent, so both events firing is harmless.
-	Creator.AddSignal(TriggerObject.InputBegan, function(Input)
-		if
-			Input.UserInputType == Enum.UserInputType.MouseButton1
-			or Input.UserInputType == Enum.UserInputType.Touch
-		then
-			DropdownModule:Open()
-		end
-	end)
-
-	Creator.AddSignal(UserInputService.InputBegan, function(Input)
+	Creator.AddSignal(UserInputService.InputEnded, function(Input)
 		if
 			Input.UserInputType == Enum.UserInputType.MouseButton1
 			or Input.UserInputType == Enum.UserInputType.Touch
@@ -718,15 +709,16 @@ function DropdownMenu.New(Config, Dropdown, Element, Type)
 			local ButtonAbsPos = DropdownButton.AbsolutePosition
 			local ButtonAbsSize = DropdownButton.AbsoluteSize
 
-			local isClickOnDropdown = Mouse.X >= ButtonAbsPos.X
-				and Mouse.X <= ButtonAbsPos.X + ButtonAbsSize.X
-				and Mouse.Y >= ButtonAbsPos.Y
-				and Mouse.Y <= ButtonAbsPos.Y + ButtonAbsSize.Y
+			local Position = Input.Position
+			local isClickOnDropdown = Position.X >= ButtonAbsPos.X
+				and Position.X <= ButtonAbsPos.X + ButtonAbsSize.X
+				and Position.Y >= ButtonAbsPos.Y
+				and Position.Y <= ButtonAbsPos.Y + ButtonAbsSize.Y
 
-			local isClickOnMenu = Mouse.X >= AbsPos.X
-				and Mouse.X <= AbsPos.X + AbsSize.X
-				and Mouse.Y >= AbsPos.Y
-				and Mouse.Y <= AbsPos.Y + AbsSize.Y
+			local isClickOnMenu = Position.X >= AbsPos.X
+				and Position.X <= AbsPos.X + AbsSize.X
+				and Position.Y >= AbsPos.Y
+				and Position.Y <= AbsPos.Y + AbsSize.Y
 
 			if Config.Window.CanDropdown and Dropdown.Opened and not isClickOnDropdown and not isClickOnMenu then
 				DropdownModule:Close()
